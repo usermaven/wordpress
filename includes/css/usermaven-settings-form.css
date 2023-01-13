@@ -1,0 +1,58 @@
+.header-section {
+    display: flex;
+    background: white;
+    height: 100px;
+    align-items: center;
+}
+.company-logo{
+    height: 50px;
+    padding: 20px;
+}
+.form-input {
+    display: flex;
+    flex-direction: column;
+    width: 50%;
+    margin-left : 20%;
+    margin-top: 2%;
+    align-items: center;
+}
+
+.form-heading {
+    font-weight: bold;
+    font-size: 20px;
+    margin-bottom: 30px;
+    padding: 25px;
+    background: white;
+}
+
+.input-block {
+    background: white;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+form label {
+    display: block;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    font-size: 14px;
+    font-weight: bold;
+}
+form input[type="text"] {
+            width: 250px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-top: 5px;
+            }
+form input[type="submit"] {
+            width: 100px;
+            background-color: dodgerblue;
+            color: white;
+            padding: 10px 10px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            }

@@ -220,16 +220,30 @@ class Usermaven {
     * This function includes the JS tracking snippet in the wordpress website
     */
 	public function usermaven_events_tracking_enqueue_scripts() {
-	    $tracking_url = get_option('usermaven_tracking_path');
-	    wp_enqueue_script( 'usermaven-tracking', $tracking_url , array(), USERMAVEN_VERSION, true );
+	    $tracking_path = "https://t.usermaven.com/lib.js";
+	    $api_key = get_option('usermaven_api_key');
+	    $tracking_host = get_option('usermaven_tracking_host');
 	    $data_autocapture = get_option('usermaven_autocapture');
+	    $cookie_less_tracking = get_option('usermaven_cookie_less_tracking');
+	    $tracking_host = rtrim($tracking_host, '/');
+
+	    if ($tracking_host !== 'https://events.usermaven.com') {
+	        $tracking_path = $tracking_host . "/lib.js";
+	    }
+
+	    wp_enqueue_script( 'usermaven-tracking', $tracking_path , array(), USERMAVEN_VERSION, true );
+
 	    $data = array(
-		'data_key' => get_option( 'usermaven_data_key' ),
-		'data_tracking_host' => get_option( 'usermaven_data_tracking_host' ),
+		'api_key' => $api_key,
+		'tracking_host' => $tracking_host,
 	     );
 
 	     if ($data_autocapture) {
             $data['data_autocapture'] = $data_autocapture;
+         }
+
+         if ($cookie_less_tracking) {
+            $data['data_privacy_policy'] = "strict";
          }
 
 	    wp_localize_script( 'usermaven-tracking', 'usermaven_data', $data );
@@ -240,7 +254,7 @@ class Usermaven {
     */
     public function track_server_side_event( $user_id, $event_type, $company = array(), $event_attributes = array()) {
         $event_api_url = 'https://eventcollectors.usermaven.com/api/v1/s2s/event/';
-        $api_key = get_option('usermaven_data_key');
+        $api_key = get_option('usermaven_api_key');
         $server_token = get_option('usermaven_server_token');
         $token = $api_key . "." . $server_token;
         $query_string = http_build_query( array(
