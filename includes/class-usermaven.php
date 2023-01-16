@@ -257,6 +257,7 @@ class Usermaven {
         $api_key = get_option('usermaven_api_key');
         $server_token = get_option('usermaven_server_token');
         $token = $api_key . "." . $server_token;
+        $random_id = uuid_create();
         $query_string = http_build_query( array(
             'token' =>  $token,
            ) );
@@ -266,7 +267,9 @@ class Usermaven {
                 'event_type' => $event_type,
                 'event_id' => "",
                 'ids' => array(),
-                'user_id' => $user_id,
+                'user' => array(
+                'anonymous_id'=> $random_id,
+                'id'=> $user_id),
                 'screen_resolution' => "0",
                 'src' => "usermaven-python",
                 'event_attributes' => $event_attributes

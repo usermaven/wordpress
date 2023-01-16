@@ -1,114 +1,63 @@
-=== Plugin Name ===
-Contributors: (this should be a list of wordpress.org userid's)
+=== Usermaven ===
+Contributors: usermaven
 Donate link: https://usermaven.com/
-Tags: comments, spam
+Tags: analytics, google analytics, web analytics, stats, privacy, privacy friendly
 Requires at least: 3.0.1
 Tested up to: 3.4
 Stable tag: 4.3
-License: GPLv2 or later
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
+License: Massachusetts Institute of Technology (MIT) license
+License URI: https://opensource.org/licenses/MIT
 
-Here is a short description of the plugin.  This should be no more than 150 characters.  No markup here.
+Usermaven is the easiest website and product analytics platform which is highly privacy-friendly.
 
 == Description ==
 
-This is the long description.  No limit, and you can use Markdown (as well as in the following sections).
+Usermaven is a powerful analytics suite to understand the behavior of your visitors and customers with pre-built reports.
+It's privacy-friendly and hosted in EU.
+- Suitable for all kinds of websites and SaaS businesses.
+- Setting up your dashboard takes only a few minutes.
+- Uncover which sources are bringing traffic, which pages are visited the most, and which actions help in conversions.
+- Discover how users engage with your SaaS product to make the right decisions.
+- Simple alternative to Google analytics
 
-For backwards compatibility, if this section is missing, the full length of the short description will be used, and
-Markdown parsed.
+## Why Usermaven?
 
-A few notes about the sections above:
+Most firms try to use complex and expensive analytics platforms like Mixpanel or Amplitude but never get around to properly configuring them to get meaningful insights. You need a product analytics solution that’s easy to setup and has ready-made templates to generate actionable insights for making data-backed growth decisions.
 
-*   "Contributors" is a comma separated list of wp.org/wp-plugins.org usernames
-*   "Tags" is a comma separated list of tags that apply to the plugin
-*   "Requires at least" is the lowest version that the plugin will work on
-*   "Tested up to" is the highest version that you've *successfully used to test the plugin*. Note that it might work on
-higher versions... this is just the highest one you've verified.
-*   Stable tag should indicate the Subversion "tag" of the latest stable version, or "trunk," if you use `/trunk/` for
-stable.
+That’s why we built Usermaven, the new data scientist in your team. We are making product analytics affordable, easy to setup and simple to maintain.
 
-    Note that the `readme.txt` of the stable tag is the one that is considered the defining one for the plugin, so
-if the `/trunk/readme.txt` file says that the stable tag is `4.3`, then it is `/tags/4.3/readme.txt` that'll be used
-for displaying information about the plugin.  In this situation, the only thing considered from the trunk `readme.txt`
-is the stable tag pointer.  Thus, if you develop in trunk, you can update the trunk `readme.txt` to reflect changes in
-your in-development version, without having that information incorrectly disclosed about the current stable version
-that lacks those changes -- as long as the trunk's `readme.txt` points to the correct stable tag.
-
-    If no stable tag is provided, it is assumed that trunk is stable, but you should specify "trunk" if that's where
-you put the stable version, in order to eliminate any doubt.
+* Super Simple - Designed to be simple and intuitive in every way, without complexity or clutter to distract you.
+* Privacy Compliance - We’ve designed Usermaven to comply with GDPR and CCPA regulations from day one.
+* System Security - We apply the latest security standards and take measures to ensure your data is safe with us.
 
 == Installation ==
 
-This section describes how to install the plugin and get it working.
+= Automatic installation =
 
-e.g.
+Automatic installation is the easiest option as WordPress handles the file transfers itself and you don't need to leave your web browser. To do an automatic install of Usermaven, log in to your WordPress dashboard, navigate to the Plugins menu and click "Add New".
 
-1. Upload `usermaven.php` to the `/wp-content/plugins/` directory
-1. Activate the plugin through the 'Plugins' menu in WordPress
-1. Place `<?php do_action('plugin_name_hook'); ?>` in your templates
+In the search field type "Usermaven" and click Search Plugins. Once you have found the plugin you can view details about it such as the point release, rating and description. Most importantly of course, you can install it by simply clicking "Install Now".
 
-== Frequently Asked Questions ==
+= Manual installation =
 
-= A question that someone might have =
-
-An answer to that question.
-
-= What about foo bar? =
-
-Answer to foo bar dilemma.
-
-== Screenshots ==
-
-1. This screen shot description corresponds to screenshot-1.(png|jpg|jpeg|gif). Note that the screenshot is taken from
-the /assets directory or the directory that contains the stable readme.txt (tags or trunk). Screenshots in the /assets
-directory take precedence. For example, `/assets/screenshot-1.png` would win over `/tags/4.3/screenshot-1.png`
-(or jpg, jpeg, gif).
-2. This is the second screen shot
-
-== Changelog ==
-
-= 1.0 =
-* A change since the previous version.
-* Another change.
-
-= 0.5 =
-* List versions from most recent at top to oldest at bottom.
+The manual installation method involves downloading our plugin and uploading it to your server via your favorite FTP application. The WordPress codex contains [instructions on how to do this here](https://codex.wordpress.org/Managing_Plugins#Manual_Plugin_Installation).
 
 == Upgrade Notice ==
 
-= 1.0 =
-Upgrade notices describe the reason a user should upgrade.  No more than 300 characters.
+Please make sure you make a backup of your database before updating any version to ensure that none of your data is lost.
 
-= 0.5 =
-This version fixes a security related bug.  Upgrade immediately.
+== Frequently Asked Questions ==
 
-== Arbitrary section ==
+= Contact Us =
 
-You may provide arbitrary sections, in the same format as the ones above.  This may be of use for extremely complicated
-plugins where more information needs to be conveyed that doesn't fit into the categories of "description" or
-"installation."  Arbitrary sections will be shown below the built-in sections outlined above.
+For more information, visit the [Usermaven website](https://usermaven.com/). And for answers to any particular question, [contact us](https://usermaven.com/contact).
 
-== A brief Markdown Example ==
+== Screenshots ==
 
-Ordered list:
+1. Usermaven Analytics Dashboard
+2. Usermaven WordPress Plugin Settings Page
 
-1. Some feature
-1. Another feature
-1. Something else about the plugin
+== Changelog ==
 
-Unordered list:
-
-* something
-* something else
-* third thing
-
-Here's a link to [WordPress](http://wordpress.org/ "Your favorite software") and one to [Markdown's Syntax Documentation][markdown syntax].
-Titles are optional, naturally.
-
-[markdown syntax]: http://daringfireball.net/projects/markdown/syntax
-            "Markdown is what the parser uses to process much of the readme file"
-
-Markdown uses email style notation for blockquotes and I've been told:
-> Asterisks for *emphasis*. Double it up  for **strong**.
-
-`<?php code(); // goes in backticks ?>`
+= 1.0.0 =
+- Initial plugin release.
