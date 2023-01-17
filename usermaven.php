@@ -66,31 +66,34 @@ $filter_name = "plugin_action_links_" . plugin_basename(__FILE__);
 add_filter( $filter_name, 'add_settings_link' );
 
 /**
- * Function to show embedded stats in wordpress dashboard
+ * Add Usermaven menu page for the form inputs as well as the embedded dashboard
  */
-function show_embedded_stats() {
-    // Retrieve the values from the WordPress database
-    $embed_dashboard = get_option( 'usermaven_embed_dashboard' );
-    $shared_link = get_option( 'usermaven_shared_link' );
-
-    // Check if the embed_dashboard option is true and the shared_link is not empty
-    if ( $embed_dashboard && !empty( $shared_link ) ) {
-        // Add a new submenu page to the WordPress admin area
-        add_submenu_page( 'options-general.php', 'Embedded Statistics', 'Embedded Statistics', 'manage_options', 'embedded-stats', 'render_embedded_stats_page' );
-    }
+function add_menu() {
+    add_menu_page('Usermaven', 'Usermaven', 'manage_options', 'usermaven_options', 'usermaven_activation_form',  plugin_dir_url(__FILE__) . 'admin/icons/um-favicon-without-white-bg.svg', 100);
+    add_submenu_page( 'usermaven_options', 'Dashboard', 'Dashboard', 'manage_options', 'usermaven_dashboard', 'usermaven_embedded_stats_page' );
 }
-add_action( 'admin_menu', 'show_embedded_stats' );
+add_action('admin_menu', 'add_menu');
 
 /**
  * Function to render embedded stats in wordpress dashboard
  */
-function render_embedded_stats_page() {
+function usermaven_embedded_stats_page() {
     $shared_link = get_option( 'usermaven_shared_link' );
+    $embed_dashboard = get_option('usermaven_embed_dashboard');
+
+    if( !$embed_dashboard || empty( $shared_link ) ) {
+        ?>
+        <div class="notice notice-warning">
+            <p>The shared link or view stats option is not set. Please click <a href="<?php echo admin_url( 'admin.php?page=usermaven_options' ); ?>">here</a> to set them up.</p>
+        </div>
+        <?php
+    } else {
     ?>
-    <div class="wrap">
-        <iframe src="<?php echo esc_url( $shared_link ); ?>" scrolling="no" frameborder="0" style="width: 100%; height: 1750px; "></iframe>
-    </div>
+        <div class="wrap">
+            <iframe src="<?php echo esc_url( $shared_link ); ?>" scrolling="no" frameborder="0" style="width: 100%; height: 1750px;"></iframe>
+        </div>
     <?php
+    }
 }
 
 
