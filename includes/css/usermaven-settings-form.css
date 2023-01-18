@@ -65,8 +65,6 @@
     color: gray;
     font-style: italic;
     font-weight: normal;
-    border-top: 1px dashed #e5e5e5;
-    padding: 10px 0 0;
 }
 
 .shared-link {
@@ -110,7 +108,7 @@ form input[type="submit"] {
     width: 100px;
     background-color: #7D47EB;
     color: white;
-    padding: 10px 10px;
+    padding: 10px 0px;
     margin: 8px 0;
     border: none;
     border-radius: 4px;
@@ -120,5 +118,5 @@ form input[type="submit"] {
 .form-button {
     display: flex;
     justify-content: flex-end;
-    padding: 10px;
+    padding: 0px 10px;
 }

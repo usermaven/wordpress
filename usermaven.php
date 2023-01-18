@@ -66,11 +66,13 @@ $filter_name = "plugin_action_links_" . plugin_basename(__FILE__);
 add_filter( $filter_name, 'add_settings_link' );
 
 /**
- * Add Usermaven menu page for the form inputs as well as the embedded dashboard
+ * Add Usermaven menu page with dashboard and settings as submenu pages
  */
 function add_menu() {
     add_menu_page('Usermaven', 'Usermaven', 'manage_options', 'usermaven_options', 'usermaven_activation_form',  plugin_dir_url(__FILE__) . 'admin/icons/um-favicon-without-white-bg.svg', 100);
     add_submenu_page( 'usermaven_options', 'Dashboard', 'Dashboard', 'manage_options', 'usermaven_dashboard', 'usermaven_embedded_stats_page' );
+    add_submenu_page( 'usermaven_options', 'Settings', 'Settings', 'manage_options', 'usermaven_options', 'usermaven_activation_form' );
+    remove_submenu_page( 'usermaven_options', 'usermaven_options' );
 }
 add_action('admin_menu', 'add_menu');
 
@@ -90,7 +92,7 @@ function usermaven_embedded_stats_page() {
     } else {
     ?>
         <div class="wrap">
-            <iframe src="<?php echo esc_url( $shared_link ); ?>" scrolling="no" frameborder="0" style="width: 100%; height: 1750px;"></iframe>
+            <iframe src="<?php echo esc_url( $shared_link ); ?>" scrolling="no" frameborder="0" style="width: 100%; height: 2970px;"></iframe>
         </div>
     <?php
     }

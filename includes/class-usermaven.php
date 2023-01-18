@@ -78,7 +78,7 @@ class Usermaven {
 		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
-        add_action( 'wp_enqueue_scripts',  array( $this, 'usermaven_events_tracking_enqueue_scripts' ) );
+        add_action('wp_footer', array( $this, 'usermaven_events_tracking_print_js_snippet' ), 50);
 	}
 
 	/**
@@ -219,9 +219,12 @@ class Usermaven {
     /**
     * This function includes the JS tracking snippet in the wordpress website
     */
-	public function usermaven_events_tracking_enqueue_scripts() {
+	public function usermaven_events_tracking_print_js_snippet() {
 	    $tracking_path = "https://t.usermaven.com/lib.js";
 	    $api_key = get_option('usermaven_api_key');
+	    if (empty($api_key)) {
+	        return;
+	    }
 	    $tracking_host = get_option('usermaven_tracking_host');
 	    $data_autocapture = get_option('usermaven_autocapture');
 	    $cookie_less_tracking = get_option('usermaven_cookie_less_tracking');
@@ -229,82 +232,78 @@ class Usermaven {
 
 	    if ($tracking_host !== 'https://events.usermaven.com') {
 	        $tracking_path = $tracking_host . "/lib.js";
-	    }
+	    } ?>
 
-	    wp_enqueue_script( 'usermaven-tracking', $tracking_path , array(), USERMAVEN_VERSION, true );
-
-	    $data = array(
-		'api_key' => $api_key,
-		'tracking_host' => $tracking_host,
-	     );
-
-	     if ($data_autocapture) {
-            $data['data_autocapture'] = $data_autocapture;
-         }
-
-         if ($cookie_less_tracking) {
-            $data['data_privacy_policy'] = "strict";
-         }
-
-	    wp_localize_script( 'usermaven-tracking', 'usermaven_data', $data );
+        <!-- Usermaven - privacy-friendly analytics tool -->
+        <script src="<?php echo esc_attr($tracking_path); ?>"
+          data-key="<?php echo esc_attr($api_key); ?>"
+          data-tracking-host="<?php echo esc_attr($tracking_host); ?>"
+          <?php echo (!$data_autocapture) ? '' : 'data-autocapture="true"'; ?>
+          <?php echo (!$cookie_less_tracking) ? '' : 'data-privacy-policy="strict"'; ?>
+         >
+        </script>
+        <!-- / Usermaven -->
+        <?php
     }
 
-    /**
-    * This function is used to track the server side of wordpress website
-    */
-    public function track_server_side_event( $user_id, $event_type, $company = array(), $event_attributes = array()) {
-        $event_api_url = 'https://eventcollectors.usermaven.com/api/v1/s2s/event/';
-        $api_key = get_option('usermaven_api_key');
-        $server_token = get_option('usermaven_server_token');
-        $token = $api_key . "." . $server_token;
-        $random_id = uuid_create();
-        $query_string = http_build_query( array(
-            'token' =>  $token,
-           ) );
 
-        $payload = array(
-                'api_key' => $api_key,
-                'event_type' => $event_type,
-                'event_id' => "",
-                'ids' => array(),
-                'user' => array(
-                'anonymous_id'=> $random_id,
-                'id'=> $user_id),
-                'screen_resolution' => "0",
-                'src' => "usermaven-python",
-                'event_attributes' => $event_attributes
-            );
-
-        // Validate the structure of the company parameter
-        if ( $company && isset( $company['id'] ) && isset( $company['name'] ) && isset( $company['created_at'] ) ) {
-            // The company parameter is valid, add it to the payload
-            $payload['company'] = $company;
-        } else {
-            // The company parameter is invalid, throw an error
-            throw new Exception( 'Invalid company parameter. The company parameter must contain id, name, and
-             created_at elements.' );
-        }
-
-        $response = wp_remote_post( $event_api_url . '?' . $query_string, array(
-            'method' => 'POST',
-            'timeout' => 45,
-            'redirection' => 5,
-            'httpversion' => '1.0',
-            'blocking' => true,
-            'headers' => array(
-                'Content-Type' => 'application/json',
-            ),
-            'body' => json_encode( $payload ),
-            'cookies' => array()
-        ) );
-
-
-        if ( is_wp_error( $response ) ) {
-            // Log the error.
-            error_log( 'Error tracking event: ' . $response->get_error_message() );
-        } else {
-            // Event was successfully tracked.
-        }
-    }
+        # Todo: Server side tracking to be included in next release.
+//     /**
+//     * This function is used to track the server side of wordpress website
+//     */
+//     public function track_server_side_event( $user_id, $event_type, $company = array(), $event_attributes = array()) {
+//         $event_api_url = 'https://eventcollectors.usermaven.com/api/v1/s2s/event/';
+//         $api_key = get_option('usermaven_api_key');
+//         $server_token = get_option('usermaven_server_token');
+//         $token = $api_key . "." . $server_token;
+//         $random_id = uuid_create();
+//         $query_string = http_build_query( array(
+//             'token' =>  $token,
+//            ) );
+//
+//         $payload = array(
+//                 'api_key' => $api_key,
+//                 'event_type' => $event_type,
+//                 'event_id' => "",
+//                 'ids' => array(),
+//                 'user' => array(
+//                 'anonymous_id'=> $random_id,
+//                 'id'=> $user_id),
+//                 'screen_resolution' => "0",
+//                 'src' => "usermaven-python",
+//                 'event_attributes' => $event_attributes
+//             );
+//
+//         // Validate the structure of the company parameter
+//         if ( $company && isset( $company['id'] ) && isset( $company['name'] ) && isset( $company['created_at'] ) ) {
+//             // The company parameter is valid, add it to the payload
+//             $payload['company'] = $company;
+//         } else {
+//             // The company parameter is invalid, throw an error
+//             throw new Exception( 'Invalid company parameter. The company parameter must contain id, name, and
+//              created_at elements.' );
+//         }
+//
+//         $response = wp_remote_post( $event_api_url . '?' . $query_string, array(
+//             'method' => 'POST',
+//             'timeout' => 45,
+//             'redirection' => 5,
+//             'httpversion' => '1.0',
+//             'blocking' => true,
+//             'headers' => array(
+//                 'Content-Type' => 'application/json',
+//             ),
+//             'body' => json_encode( $payload ),
+//             'cookies' => array()
+//         ) );
+//
+//
+//         if ( is_wp_error( $response ) ) {
+//             // Log the error.
+//             error_log( 'Error tracking event: ' . $response->get_error_message() );
+//         } else {
+//             // Event was successfully tracked.
+//         }
+//     }
 
 }
