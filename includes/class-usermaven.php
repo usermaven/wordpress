@@ -221,17 +221,19 @@ class Usermaven {
     */
 	public function usermaven_events_tracking_print_js_snippet() {
 	    $tracking_path = "https://t.usermaven.com/lib.js";
+	    $tracking_host = "https://events.usermaven.com";
 	    $api_key = get_option('usermaven_api_key');
 	    if (empty($api_key)) {
 	        return;
 	    }
-	    $tracking_host = get_option('usermaven_tracking_host');
+	    $custom_domain = get_option('usermaven_custom_domain');
 	    $data_autocapture = get_option('usermaven_autocapture');
 	    $cookie_less_tracking = get_option('usermaven_cookie_less_tracking');
-	    $tracking_host = rtrim($tracking_host, '/');
 
-	    if ($tracking_host !== 'https://events.usermaven.com') {
-	        $tracking_path = $tracking_host . "/lib.js";
+	    if ( !empty($custom_domain)) {
+	        $custom_domain = rtrim($custom_domain, '/');
+	        $tracking_path = $custom_domain . "/lib.js";
+	        $tracking_host = $custom_domain;
 	    } ?>
 
         <!-- Usermaven - privacy-friendly analytics tool -->

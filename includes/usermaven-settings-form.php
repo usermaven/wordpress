@@ -12,12 +12,12 @@ function usermaven_activation_form() {
     $embed_dashboard = isset( $_POST['embed_dashboard'] ) ? true : false;
 
     $api_key = esc_attr($_POST['api_key']);
-    $tracking_host = 'https://events.usermaven.com';
+    $custom_domain = '';
 //  $server_token = '';
     $shared_link = '';
 
-    if ( ! empty( $_POST['tracking_host'] ) ) {
-        $tracking_host = esc_attr($_POST['tracking_host']);
+    if ( ! empty( $_POST['custom_domain'] ) ) {
+        $custom_domain = esc_attr($_POST['custom_domain']);
     }
 
        # Todo: Server side token code to be included in next release
@@ -35,7 +35,7 @@ function usermaven_activation_form() {
     update_option( 'usermaven_embed_dashboard', $embed_dashboard );
     update_option( 'usermaven_shared_link', $shared_link);
     update_option( 'usermaven_api_key', $api_key );
-    update_option( 'usermaven_tracking_host', $tracking_host );
+    update_option( 'usermaven_custom_domain', $custom_domain );
 //     update_option( 'usermaven_server_token', $server_token);
 
     // Display a success message
@@ -67,10 +67,11 @@ function usermaven_activation_form() {
         <div class="input-block">
         <p class="input-text">
         By default the tracking host is "https://events.usermaven.com". You can use your own custom domain in the
-        tracking script to bypass ad-blockers.
+        tracking script to bypass ad-blockers. For using your own custom domain, you will have to first add your
+        custom domain <a href="https://app.usermaven.com/env/<?php echo wp_unslash(get_option('usermaven_api_key')); ?>/settings/custom_domain" target="blank"> here.</a>
         </p>
-        <label for="tracking_host">Tracking Host</label>
-        <input type="text" name="tracking_host" id="tracking_host" placeholder="Enter your tracking host here" value="<?php echo wp_unslash(get_option('usermaven_tracking_host')); ?>">
+        <label for="custom_domain">Custom Domain</label>
+        <input type="text" name="custom_domain" id="custom_domain" placeholder="Enter your custom domain here" value="<?php echo wp_unslash(get_option('usermaven_custom_domain')); ?>">
         </div>
         <!--
         <div class="input-block">
