@@ -47,14 +47,6 @@ function activate_usermaven() {
 }
 
 /**
- * Function to add usermaven favicon to the plugin
- */
-function add_favicon() {
-   echo '<link rel="shortcut icon" href="' . plugins_url( 'admin/icons/um-favicon-without-white-bg.svg', __FILE__ ) . '" >';
-}
-add_action('wp_head', 'add_favicon');
-
-/**
  * Function to add usermaven settings link to the plugin list page
  */
 function add_settings_link( $links ) {
