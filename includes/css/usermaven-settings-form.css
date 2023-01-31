@@ -1,0 +1,122 @@
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    background: white;
+    height: 100px;
+    margin-left: -20px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    margin-right: 25px;
+}
+
+.header-button {
+    width: 100px;
+    background-color: #7D47EB;
+    text-align: center;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: bold;
+    color: white;
+    padding: 12px 12px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.company-logo{
+    height: 50px;
+    padding: 20px;
+}
+.form-input {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 700px;
+    margin: 50px auto;
+    align-items: center;
+}
+
+.form-heading {
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 20px;
+    padding-left: 15px;
+    padding-top: 25px;
+    padding-bottom: 25px;
+    background: white;
+}
+
+.input-block {
+    background: white;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.input-text {
+    color: gray;
+    font-style: italic;
+    font-weight: normal;
+}
+
+.shared-link {
+    width: 100% !important;
+    max-width: 500px;
+}
+
+.form {
+    width: 100%;
+}
+
+form label {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-right: 5px;
+    font-size: 12px;
+    font-weight: bold;
+}
+form input[type="text"] {
+    width: 250px;
+    padding: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    font-size: 12px;
+    font-weight: normal;
+    border-style: hidden;
+    background-color: #eee;
+}
+
+
+form input[type="checkbox"] {
+    padding: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    font-size: 12px;
+    border-style: hidden;
+    background-color: #eee;
+}
+
+form input[type="submit"] {
+    width: 100px;
+    background-color: #7D47EB;
+    color: white;
+    padding: 10px 0px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.form-button {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0px 10px;
+}
