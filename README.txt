@@ -1,24 +1,24 @@
 === Usermaven ===
 Contributors: usermaven
 Donate link: https://usermaven.com/
-Tags: analytics, google analytics, web analytics, stats, privacy, privacy friendly
+Tags: analytics, google analytics alternative, web analytics, stats, privacy, privacy friendly, privacy friendly analytics,
 Requires at least: 3.0.1
 Tested up to: 3.4
 Stable tag: 4.3
 License: Massachusetts Institute of Technology (MIT) license
 License URI: https://opensource.org/licenses/MIT
 
-Usermaven is the easiest website and product analytics platform which is highly privacy-friendly.
+Usermaven's web analytics product is a Google Analytics alternative that provides a real-time view of your website traffic metrics. Cookie-free, hosted in EU, and fully compliant with GDPR, CCPA and PECR.
 
 == Description ==
 
-Usermaven is a powerful analytics suite to understand the behavior of your visitors and customers with pre-built reports.
-It's privacy-friendly and hosted in EU.
-- Suitable for all kinds of websites and SaaS businesses.
-- Setting up your dashboard takes only a few minutes.
-- Uncover which sources are bringing traffic, which pages are visited the most, and which actions help in conversions.
-- Discover how users engage with your SaaS product to make the right decisions.
-- Simple alternative to Google analytics
+Usermaven helps marketing and product teams turn more visitors into customers, get more people to use the product, and keep them coming back. No more guessing or relying on intuition – let data drive your success.
+
+- Effortless, no-code event tracking: Unlike other tools, Usermaven eliminates dependence on developers for tracking key actions performed by users on your website or app.
+- Analyze your marketing channels to increase ROI. See Which traffic sources or campaigns are bringing in the most conversions?
+- Track and compare the performance of your marketing campaigns with UTMs.
+- Track individual user behavior to understand their interests. See what they're paying attention to, and make informed decisions.
+- Get accurate stats with Adblocker bypassing and cookie-less tracking.
 
 ## Why Usermaven?
 
