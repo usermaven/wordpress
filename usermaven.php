@@ -49,24 +49,24 @@ function activate_usermaven() {
 /**
  * Function to add usermaven settings link to the plugin list page
  */
-function add_settings_link( $links ) {
+function add_usermaven_settings_link( $links ) {
     $settings_link = '<a href="' . admin_url( 'options-general.php?page=usermaven_options' ) . '">' . __( 'Settings' ) . '</a>';
     array_push( $links, $settings_link );
     return $links;
 }
 $filter_name = "plugin_action_links_" . plugin_basename(__FILE__);
-add_filter( $filter_name, 'add_settings_link' );
+add_filter( $filter_name, 'add_usermaven_settings_link' );
 
 /**
  * Add Usermaven menu page with dashboard and settings as submenu pages
  */
-function add_menu() {
+function add_usermaven_settings_menu() {
     add_menu_page('Usermaven', 'Usermaven', 'manage_options', 'usermaven_options', 'usermaven_activation_form',  plugin_dir_url(__FILE__) . 'admin/icons/um-favicon-without-white-bg.svg', 100);
     add_submenu_page( 'usermaven_options', 'Dashboard', 'Dashboard', 'manage_options', 'usermaven_dashboard', 'usermaven_embedded_stats_page' );
     add_submenu_page( 'usermaven_options', 'Settings', 'Settings', 'manage_options', 'usermaven_options', 'usermaven_activation_form' );
     remove_submenu_page( 'usermaven_options', 'usermaven_options' );
 }
-add_action('admin_menu', 'add_menu');
+add_action('admin_menu', 'add_usermaven_settings_menu');
 
 /**
  * Function to render embedded stats in wordpress dashboard
@@ -78,7 +78,7 @@ function usermaven_embedded_stats_page() {
     if( !$embed_dashboard || empty( $shared_link ) ) {
         ?>
         <div class="notice notice-warning">
-            <p>The shared link or view stats option is not set. Please click <a href="<?php echo admin_url( 'admin.php?page=usermaven_options' ); ?>">here</a> to set them up.</p>
+            <p>The shared link or view stats option is not set. Please click <a href="<?php echo esc_url(admin_url( 'admin.php?page=usermaven_options' )); ?>">here</a> to set them up.</p>
         </div>
         <?php
     } else {
