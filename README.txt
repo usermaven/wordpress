@@ -3,9 +3,9 @@ Contributors: usermaven
 Donate link: https://usermaven.com/
 Tags: analytics, google analytics alternative, web analytics, stats, privacy, privacy friendly, privacy friendly analytics,
 Requires at least: 3.0.1
-Tested up to: 3.4
+Tested up to: 6.1
 Requires PHP: 5.6
-Stable tag: 4.3
+Stable tag: 1.0
 License: Massachusetts Institute of Technology (MIT) license
 License URI: https://opensource.org/licenses/MIT
 

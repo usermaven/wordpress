@@ -253,7 +253,7 @@ class Usermaven {
 //     /**
 //     * This function is used to track the server side of wordpress website
 //     */
-//     public function track_server_side_event( $user_id, $event_type, $company = array(), $event_attributes = array()) {
+//     public function usermaven_track_server_side_event( $user_id, $event_type, $company = array(), $event_attributes = array()) {
 //         $event_api_url = 'https://eventcollectors.usermaven.com/api/v1/s2s/event/';
 //         $api_key = get_option('usermaven_api_key');
 //         $server_token = get_option('usermaven_server_token');
