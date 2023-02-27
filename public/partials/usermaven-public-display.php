@@ -6,7 +6,7 @@
  * This file is used to markup the public-facing aspects of the plugin.
  *
  * @link       https://usermaven.com/
- * @since      1.0.1
+ * @since      1.0.2
  *
  * @package    Usermaven
  * @subpackage Usermaven/public/partials
