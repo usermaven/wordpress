@@ -4,7 +4,7 @@
  * Fired during plugin activation
  *
  * @link       https://usermaven.com/
- * @since      1.0.1
+ * @since      1.0.2
  *
  * @package    Usermaven
  * @subpackage Usermaven/includes
@@ -15,7 +15,7 @@
  *
  * This class defines all code necessary to run during the plugin's activation.
  *
- * @since      1.0.1
+ * @since      1.0.2
  * @package    Usermaven
  * @subpackage Usermaven/includes
  * @author     Usermaven <awais.ahmed@d4interactive.io>
@@ -27,7 +27,7 @@ class Usermaven_Activator {
 	 *
 	 * Long Description.
 	 *
-	 * @since    1.0.1
+	 * @since    1.0.2
 	 */
 	public static function activate() {
 

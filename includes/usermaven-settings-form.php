@@ -36,13 +36,15 @@ function usermaven_activation_form() {
          $error = "API key can't be empty";
     }
 
+    $pattern = '/^(https?:\/\/)?[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*\.[a-zA-Z]{2,63}(\/\S*)?$/i';
+
     // Validate the custom domain
-    if ( ! empty( $custom_domain ) && ! wp_http_validate_url( $custom_domain ) ) {
-          $error = "Invalid custom domain";
+    if ( ! empty( $custom_domain ) && ! preg_match( $pattern, $custom_domain ) ) {
+            $error = "Invalid custom domain";
     }
 
     // Validate the shared link
-    if ( ! empty( $shared_link ) && ! wp_http_validate_url( $shared_link ) ) {
+    if ( ! empty( $shared_link ) && ! preg_match( $pattern, $shared_link ) ) {
            $error = "Invalid shared link";
     }
 
