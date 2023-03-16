@@ -9,14 +9,14 @@
  * that starts the plugin.
  *
  * @link              https://usermaven.com/
- * @since             1.0.2
+ * @since             1.0.3
  * @package           Usermaven
  *
  * @wordpress-plugin
  * Plugin Name:       Usermaven
  * Plugin URI:        https://github.com/usermaven/wordpress
  * Description:       The Easiest Website and Product Analytics Platform
- * Version:           1.0.2
+ * Version:           1.0.3
  * Author:            Usermaven
  * Author URI:        https://usermaven.com/
  * License:           GPL-2.0+
@@ -32,10 +32,10 @@ if ( ! defined( 'WPINC' ) ) {
 
 /**
  * Currently plugin version.
- * Start at version 1.0.2 and use SemVer - https://semver.org
+ * Start at version 1.0.3 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'USERMAVEN_VERSION', '1.0.2' );
+define( 'USERMAVEN_VERSION', '1.0.3' );
 
 /**
  * The code that runs during plugin activation.
@@ -121,7 +121,7 @@ require_once('includes/usermaven-settings-form.php');
  * then kicking off the plugin from this point in the file does
  * not affect the page life cycle.
  *
- * @since    1.0.2
+ * @since    1.0.3
  */
 function run_usermaven() {
 
