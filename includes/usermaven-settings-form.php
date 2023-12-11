@@ -37,6 +37,15 @@ function usermaven_activation_form() {
          $error = "API key can't be empty";
     }
 
+    // check if the url contains http or https, if not add https.
+    if (!empty($custom_domain)) {
+        $custom_domain = preg_replace("/^http:/i", "https:", $custom_domain);
+        if (!preg_match('/^https?:\/\//', $custom_domain)) {
+            $custom_domain = 'https://' . $custom_domain;
+        }
+    }
+
+
     $pattern = '/^(https?:\/\/)?[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*\.[a-zA-Z]{2,63}(\/\S*)?$/i';
 
     // Validate the custom domain
