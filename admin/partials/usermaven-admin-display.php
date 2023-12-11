@@ -6,7 +6,7 @@
  * This file is used to markup the admin-facing aspects of the plugin.
  *
  * @link       https://usermaven.com/
- * @since      1.0.3
+ * @since      1.0.4
  *
  * @package    Usermaven
  * @subpackage Usermaven/admin/partials
