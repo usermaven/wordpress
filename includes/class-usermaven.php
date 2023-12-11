@@ -215,6 +215,23 @@ class Usermaven {
 		return $this->version;
 	}
 
+	/**
+	* Private function to check if the tracking is enabled for the current user role
+    */
+    private function is_tracking_enabled() {
+        $current_user = wp_get_current_user();
+      	$is_logged_in = is_user_logged_in();
+
+      	if (!$is_logged_in) {
+      	   return true;
+      	}
+
+        $current_user_role = $current_user->roles[0];
+        $usermaven_tracking_enabled = get_option('usermaven_role_' . $current_user_role);
+        return $usermaven_tracking_enabled;
+    }
+
+
 
     /**
     * This function includes the JS tracking snippet in the wordpress website
@@ -229,6 +246,17 @@ class Usermaven {
 	    $custom_domain = get_option('usermaven_custom_domain');
 	    $data_autocapture = get_option('usermaven_autocapture');
 	    $cookie_less_tracking = get_option('usermaven_cookie_less_tracking');
+	    $identify_verification = get_option('usermaven_identify_verification');
+	    $is_tracking_enabled = $this->is_tracking_enabled();
+
+	    if (!$is_tracking_enabled) {
+            return;
+        }
+
+
+	    $current_user = wp_get_current_user();
+	    $is_logged_in = is_user_logged_in();
+	    $current_user_role = $current_user->roles[0];
 
 	    if ( !empty($custom_domain)) {
 	        $custom_domain = rtrim($custom_domain, '/');
@@ -254,6 +282,28 @@ class Usermaven {
             })();
         </script>
         <!-- / Usermaven -->
+
+
+        <?php if($is_logged_in && $identify_verification): ?>
+            <!-- Usermaven - identify verification -->
+            <script type="text/javascript">
+                (function () {
+                   usermaven('id', {
+                       id: '<?php echo esc_attr($current_user->ID); ?>',
+                       email: '<?php echo esc_attr($current_user->user_email); ?>',
+                       name: '<?php echo esc_attr($current_user->display_name); ?>',
+                       first_name: '<?php echo esc_attr($current_user->user_firstname); ?>',
+                       last_name: '<?php echo esc_attr($current_user->user_lastname); ?>',
+                       created_at: '<?php echo esc_attr($current_user->user_registered); ?>',
+                       custom: {
+                            role: '<?php echo esc_attr($current_user->roles[0]); ?>',
+                       }
+                   });
+                })();
+            </script>
+            <!-- / Usermaven - identify verification -->
+        <?php endif; ?>
+
         <?php
     }
 
