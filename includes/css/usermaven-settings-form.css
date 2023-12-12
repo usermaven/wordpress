@@ -47,7 +47,7 @@
 
 .form-heading {
     font-weight: bold;
-    font-size: 18px;
+    font-size: 19px;
     margin-bottom: 20px;
     padding-left: 15px;
     padding-top: 25px;
@@ -63,7 +63,7 @@
 
 .input-text {
     color: gray;
-    font-style: italic;
+    /*font-style: italic;*/
     font-weight: normal;
 }
 
