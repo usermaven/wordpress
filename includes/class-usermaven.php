@@ -70,7 +70,7 @@ class Usermaven {
 		if ( defined( 'USERMAVEN_VERSION' ) ) {
 			$this->version = USERMAVEN_VERSION;
 		} else {
-			$this->version = '1.0.4';
+			$this->version = '1.0.5';
 		}
 		$this->plugin_name = 'usermaven';
 
@@ -226,7 +226,12 @@ class Usermaven {
       	   return true;
       	}
 
-        $current_user_role = $current_user->roles[0];
+        $current_user_role = $current_user->roles[0] ?? '';
+
+        if(!$current_user_role) {
+            return true;
+        }
+
         $usermaven_tracking_enabled = get_option('usermaven_role_' . $current_user_role);
         return $usermaven_tracking_enabled;
     }
@@ -256,7 +261,6 @@ class Usermaven {
 
 	    $current_user = wp_get_current_user();
 	    $is_logged_in = is_user_logged_in();
-	    $current_user_role = $current_user->roles[0];
 
 	    if ( !empty($custom_domain)) {
 	        $custom_domain = rtrim($custom_domain, '/');
