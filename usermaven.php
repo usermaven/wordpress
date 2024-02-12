@@ -9,6 +9,7 @@
  * that starts the plugin.
  *
  * @link              https://usermaven.com/
+
  * @since             1.0.5
  * @package           Usermaven
  *
@@ -16,6 +17,7 @@
  * Plugin Name:       Usermaven
  * Plugin URI:        https://github.com/usermaven/wordpress
  * Description:       The Easiest Website and Product Analytics Platform
+
  * Version:           1.0.5
  * Author:            Usermaven
  * Author URI:        https://usermaven.com/
@@ -61,7 +63,7 @@ add_filter( $filter_name, 'add_usermaven_settings_link' );
  * Add Usermaven menu page with dashboard and settings as submenu pages
  */
 function add_usermaven_settings_menu() {
-    add_menu_page('Usermaven', 'Usermaven', 'manage_options', 'usermaven_options', 'usermaven_activation_form',  plugin_dir_url(__FILE__) . 'admin/icons/um-favicon-without-white-bg.svg', 100);
+    add_menu_page('Usermaven', 'Usermaven', 'manage_options', 'usermaven_options', 'usermaven_activation_form',  plugin_dir_url(__FILE__) . 'admin/icons/um-favicon-white.svg', 100);
     add_submenu_page( 'usermaven_options', 'Dashboard', 'Dashboard', 'manage_options', 'usermaven_dashboard', 'usermaven_embedded_stats_page' );
     add_submenu_page( 'usermaven_options', 'Settings', 'Settings', 'manage_options', 'usermaven_options', 'usermaven_activation_form' );
     remove_submenu_page( 'usermaven_options', 'usermaven_options' );
