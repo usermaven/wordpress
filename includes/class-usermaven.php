@@ -7,7 +7,7 @@
  * public-facing side of the site and the admin area.
  *
  * @link       https://usermaven.com/
- * @since      1.0.3
+ * @since      1.0.4
  *
  * @package    Usermaven
  * @subpackage Usermaven/includes
@@ -22,7 +22,7 @@
  * Also maintains the unique identifier of this plugin as well as the current
  * version of the plugin.
  *
- * @since      1.0.3
+ * @since      1.0.4
  * @package    Usermaven
  * @subpackage Usermaven/includes
  * @author     Usermaven <awais.ahmed@d4interactive.io>
@@ -33,7 +33,7 @@ class Usermaven {
 	 * The loader that's responsible for maintaining and registering all hooks that power
 	 * the plugin.
 	 *
-	 * @since    1.0.3
+	 * @since    1.0.4
 	 * @access   protected
 	 * @var      Usermaven_Loader    $loader    Maintains and registers all hooks for the plugin.
 	 */
@@ -42,7 +42,7 @@ class Usermaven {
 	/**
 	 * The unique identifier of this plugin.
 	 *
-	 * @since    1.0.3
+	 * @since    1.0.4
 	 * @access   protected
 	 * @var      string    $plugin_name    The string used to uniquely identify this plugin.
 	 */
@@ -51,7 +51,7 @@ class Usermaven {
 	/**
 	 * The current version of the plugin.
 	 *
-	 * @since    1.0.3
+	 * @since    1.0.4
 	 * @access   protected
 	 * @var      string    $version    The current version of the plugin.
 	 */
@@ -64,13 +64,13 @@ class Usermaven {
 	 * Load the dependencies, define the locale, and set the hooks for the admin area and
 	 * the public-facing side of the site.
 	 *
-	 * @since    1.0.3
+	 * @since    1.0.4
 	 */
 	public function __construct() {
 		if ( defined( 'USERMAVEN_VERSION' ) ) {
 			$this->version = USERMAVEN_VERSION;
 		} else {
-			$this->version = '1.0.3';
+			$this->version = '1.0.5';
 		}
 		$this->plugin_name = 'usermaven';
 
@@ -94,7 +94,7 @@ class Usermaven {
 	 * Create an instance of the loader which will be used to register the hooks
 	 * with WordPress.
 	 *
-	 * @since    1.0.3
+	 * @since    1.0.4
 	 * @access   private
 	 */
 	private function load_dependencies() {
@@ -132,7 +132,7 @@ class Usermaven {
 	 * Uses the Usermaven_i18n class in order to set the domain and to register the hook
 	 * with WordPress.
 	 *
-	 * @since    1.0.3
+	 * @since    1.0.4
 	 * @access   private
 	 */
 	private function set_locale() {
@@ -147,7 +147,7 @@ class Usermaven {
 	 * Register all of the hooks related to the admin area functionality
 	 * of the plugin.
 	 *
-	 * @since    1.0.3
+	 * @since    1.0.4
 	 * @access   private
 	 */
 	private function define_admin_hooks() {
@@ -163,7 +163,7 @@ class Usermaven {
 	 * Register all of the hooks related to the public-facing functionality
 	 * of the plugin.
 	 *
-	 * @since    1.0.3
+	 * @since    1.0.4
 	 * @access   private
 	 */
 	private function define_public_hooks() {
@@ -178,7 +178,7 @@ class Usermaven {
 	/**
 	 * Run the loader to execute all of the hooks with WordPress.
 	 *
-	 * @since    1.0.3
+	 * @since    1.0.4
 	 */
 	public function run() {
 		$this->loader->run();
@@ -188,7 +188,7 @@ class Usermaven {
 	 * The name of the plugin used to uniquely identify it within the context of
 	 * WordPress and to define internationalization functionality.
 	 *
-	 * @since     1.0.3
+	 * @since     1.0.4
 	 * @return    string    The name of the plugin.
 	 */
 	public function get_plugin_name() {
@@ -198,7 +198,7 @@ class Usermaven {
 	/**
 	 * The reference to the class that orchestrates the hooks with the plugin.
 	 *
-	 * @since     1.0.3
+	 * @since     1.0.4
 	 * @return    Usermaven_Loader    Orchestrates the hooks of the plugin.
 	 */
 	public function get_loader() {
@@ -208,12 +208,34 @@ class Usermaven {
 	/**
 	 * Retrieve the version number of the plugin.
 	 *
-	 * @since     1.0.3
+	 * @since     1.0.4
 	 * @return    string    The version number of the plugin.
 	 */
 	public function get_version() {
 		return $this->version;
 	}
+
+	/**
+	* Private function to check if the tracking is enabled for the current user role
+    */
+    private function is_tracking_enabled() {
+        $current_user = wp_get_current_user();
+      	$is_logged_in = is_user_logged_in();
+
+      	if (!$is_logged_in) {
+      	   return true;
+      	}
+
+        $current_user_role = $current_user->roles[0] ?? '';
+
+        if(!$current_user_role) {
+            return true;
+        }
+
+        $usermaven_tracking_enabled = get_option('usermaven_role_' . $current_user_role);
+        return $usermaven_tracking_enabled;
+    }
+
 
 
     /**
@@ -229,6 +251,16 @@ class Usermaven {
 	    $custom_domain = get_option('usermaven_custom_domain');
 	    $data_autocapture = get_option('usermaven_autocapture');
 	    $cookie_less_tracking = get_option('usermaven_cookie_less_tracking');
+	    $identify_verification = get_option('usermaven_identify_verification');
+	    $is_tracking_enabled = $this->is_tracking_enabled();
+
+	    if (!$is_tracking_enabled) {
+            return;
+        }
+
+
+	    $current_user = wp_get_current_user();
+	    $is_logged_in = is_user_logged_in();
 
 	    if ( !empty($custom_domain)) {
 	        $custom_domain = rtrim($custom_domain, '/');
@@ -254,6 +286,28 @@ class Usermaven {
             })();
         </script>
         <!-- / Usermaven -->
+
+
+        <?php if($is_logged_in && $identify_verification): ?>
+            <!-- Usermaven - identify verification -->
+            <script type="text/javascript">
+                (function () {
+                   usermaven('id', {
+                       id: '<?php echo esc_attr($current_user->ID); ?>',
+                       email: '<?php echo esc_attr($current_user->user_email); ?>',
+                       name: '<?php echo esc_attr($current_user->display_name); ?>',
+                       first_name: '<?php echo esc_attr($current_user->user_firstname); ?>',
+                       last_name: '<?php echo esc_attr($current_user->user_lastname); ?>',
+                       created_at: '<?php echo esc_attr($current_user->user_registered); ?>',
+                       custom: {
+                            role: '<?php echo esc_attr($current_user->roles[0]); ?>',
+                       }
+                   });
+                })();
+            </script>
+            <!-- / Usermaven - identify verification -->
+        <?php endif; ?>
+
         <?php
     }
 
