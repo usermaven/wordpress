@@ -5,7 +5,7 @@ Tags: analytics, google analytics alternative, web analytics, stats, privacy, pr
 Requires at least: 3.0.1
 Tested up to: 6.4
 Requires PHP: 5.6
-Stable tag: 1.0.6
+Stable tag: 1.0.7
 License: Massachusetts Institute of Technology (MIT) license
 License URI: https://opensource.org/licenses/MIT
 
