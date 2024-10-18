@@ -217,23 +217,38 @@ class Usermaven {
 
 	/**
 	* Private function to check if the tracking is enabled for the current user role
+	* Note: If the user role is not found in the usermaven roles, then tracking is enabled by default
     */
     private function is_tracking_enabled() {
         $current_user = wp_get_current_user();
-      	$is_logged_in = is_user_logged_in();
+        $is_logged_in = is_user_logged_in();
 
-      	if (!$is_logged_in) {
-      	   return true;
-      	}
-
-        $current_user_role = $current_user->roles[0] ?? '';
-
-        if(!$current_user_role) {
+        if (!$is_logged_in) {
             return true;
         }
 
-        $usermaven_tracking_enabled = get_option('usermaven_role_' . $current_user_role);
-        return $usermaven_tracking_enabled;
+        $current_user_role = $current_user->roles[0] ?? '';
+
+        if (!$current_user_role) {
+            return true;
+        }
+
+        $usermaven_roles = [
+            'administrator',
+            'author',
+            'contributor',
+            'editor',
+            'subscriber',
+            'translator'
+        ];
+
+        if (in_array($current_user_role, $usermaven_roles)) {
+            $usermaven_tracking_enabled = get_option('usermaven_role_' . $current_user_role);
+            return $usermaven_tracking_enabled;
+        }
+
+        // For roles other than the specified Usermaven roles, return true
+        return true;
     }
 
 
