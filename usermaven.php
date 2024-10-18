@@ -117,6 +117,13 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-usermaven.php';
 require_once('includes/usermaven-settings-form.php');
 
 /**
+ * The WooCommerce integration class for Usermaven
+ */
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-usermaven-api.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-usermaven-woocommerce.php';
+
+
+/**
  * Begins execution of the plugin.
  *
  * Since everything within the plugin is registered via hooks,
@@ -126,9 +133,13 @@ require_once('includes/usermaven-settings-form.php');
  * @since    1.0.4
  */
 function run_usermaven() {
+    
+    $plugin = new Usermaven();
+    $plugin->run();
 
-	$plugin = new Usermaven();
-	$plugin->run();
-
+    // Check if WooCommerce is active
+    if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
+        new Usermaven_WooCommerce();
+    }
 }
 run_usermaven();
