@@ -133,13 +133,16 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/class-usermaven-woocommerce
  * @since    1.0.4
  */
 function run_usermaven() {
+    // Tracking host
+    $tracking_host = "https://eventcollectors.usermaven.com";
     
-    $plugin = new Usermaven();
+    // Initialize the plugin with the tracking host
+    $plugin = new Usermaven($tracking_host);
     $plugin->run();
 
     // Check if WooCommerce is active
     if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
-        new Usermaven_WooCommerce();
+        new Usermaven_WooCommerce($tracking_host);
     }
 }
 run_usermaven();

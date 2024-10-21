@@ -58,6 +58,15 @@ class Usermaven {
 	protected $version;
 
 	/**
+	 * The tracking host of the plugin.
+	 *
+	 * @since    1.0.4
+	 * @access   protected
+	 * @var      string    $tracking_host    The tracking host of the plugin.
+	 */
+	protected $tracking_host;
+
+	/**
 	 * Define the core functionality of the plugin.
 	 *
 	 * Set the plugin name and the plugin version that can be used throughout the plugin.
@@ -66,13 +75,15 @@ class Usermaven {
 	 *
 	 * @since    1.0.4
 	 */
-	public function __construct() {
+	
+	public function __construct($tracking_host) {
 		if ( defined( 'USERMAVEN_VERSION' ) ) {
 			$this->version = USERMAVEN_VERSION;
 		} else {
 			$this->version = '1.0.7';
 		}
 		$this->plugin_name = 'usermaven';
+		$this->tracking_host = $tracking_host;
 
 		$this->load_dependencies();
 		$this->set_locale();
@@ -258,8 +269,6 @@ class Usermaven {
     */
 	public function usermaven_events_tracking_print_js_snippet() {
 	    $tracking_path = "https://t.usermaven.com/lib.js";
-	    $tracking_host = "https://events.usermaven.com";
-		// $tracking_host = "https://eventcollectors.usermaven.com";
 	    $api_key = get_option('usermaven_api_key');
 	    if (empty($api_key)) {
 	        return;

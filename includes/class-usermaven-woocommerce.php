@@ -3,8 +3,8 @@
 class Usermaven_WooCommerce {
     private $api;
 
-    public function __construct() {
-        $this->api = new Usermaven_API();
+    public function __construct($tracking_host) {
+        $this->api = new Usermaven_API($tracking_host);
         $this->api_key = get_option('usermaven_api_key');
         $this->init_hooks();
     }
@@ -26,12 +26,14 @@ class Usermaven_WooCommerce {
 
     public function track_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
         $product = wc_get_product($product_id);
+        #TODO: Add the currency as well
         $event_attributes = array(
             'product_id' => $product_id,
             'product_name' => $product->get_name(),
             'quantity' => $quantity,
             'price' => $product->get_price(),
             'variation_id' => $variation_id,
+            'currency' => get_woocommerce_currency(),
         );
         $this->send_event('add_to_cart', $event_attributes);
     }

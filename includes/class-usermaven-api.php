@@ -2,11 +2,12 @@
 class Usermaven_API {
     private $server_token;
     private $api_key;
-    private $api_url = 'https://eventcollectors.usermaven.com/api/v1/s2s/event';
+    private $api_url;
 
-    public function __construct() {
+    public function __construct($tracking_host) {
         $this->server_token = get_option('usermaven_server_token');
         $this->api_key = get_option('usermaven_api_key');
+        $this->api_url = "$tracking_host/api/v1/s2s/event";
     }
 
     public function send_event($event_type, $user_data, $event_attributes = [], $company_data = []) {
