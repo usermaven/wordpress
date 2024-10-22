@@ -29,7 +29,6 @@ class Usermaven_WooCommerce {
 
         // Cart Actions
         add_action('woocommerce_add_to_cart', array($this, 'track_add_to_cart'), 10, 6);
-        // add_action('woocommerce_ajax_added_to_cart', array($this, 'track_ajax_add_to_cart'));
         add_action('woocommerce_cart_item_removed', array($this, 'track_remove_from_cart'), 10, 2);
         add_action('woocommerce_after_cart_item_quantity_update', array($this, 'track_cart_update'), 10, 4);
 
@@ -145,35 +144,12 @@ class Usermaven_WooCommerce {
             'currency' => get_woocommerce_currency(),
             'cart_total' => WC()->cart->get_cart_contents_total(),
             'cart_items_count' => WC()->cart->get_cart_contents_count(),
-            // 'is_ajax' => did_action('wp_ajax_woocommerce_add_to_cart') || did_action('wp_ajax_nopriv_woocommerce_add_to_cart')
         );
         
         if ($variation_id && $variation) {
             $event_attributes['variation_id'] = $variation_id;
             $event_attributes['variation_attributes'] = $variation;
         }
-
-        $this->send_event('add_to_cart', $event_attributes);
-    }
-
-    /**
-     * Track AJAX add to cart events
-     */
-    public function track_ajax_add_to_cart($product_id) {
-        $product = wc_get_product($product_id);
-        if (!$product) {
-            return;
-        }
-
-        $event_attributes = array(
-            'product_id' => $product_id,
-            'product_name' => $product->get_name(),
-            'price' => $product->get_price(),
-            'currency' => get_woocommerce_currency(),
-            'is_ajax' => true,
-            'cart_total' => WC()->cart->get_cart_contents_total(),
-            'cart_items_count' => WC()->cart->get_cart_contents_count()
-        );
 
         $this->send_event('add_to_cart', $event_attributes);
     }
