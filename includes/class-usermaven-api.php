@@ -26,7 +26,7 @@ class Usermaven_API {
                 'id' => $company_data['id'] ?? '',
                 'name' => $company_data['name'] ?? '',
             ],
-            'src' => 'http',
+            'src' => 'usermaven-woocommerce',
             'url' => $_SERVER['HTTP_REFERER'] ?? '',
             'page_title' => wp_get_document_title(),
             'doc_path' => $_SERVER['REQUEST_URI'] ?? '',
