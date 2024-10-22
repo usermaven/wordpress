@@ -134,7 +134,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/class-usermaven-woocommerce
  */
 function run_usermaven() {
     // Tracking host
-    $tracking_host = "https://eventcollectors.usermaven.com";
+    $tracking_host = "https://events.usermaven.com";
     
     // Initialize the plugin with the tracking host
     $plugin = new Usermaven($tracking_host);
