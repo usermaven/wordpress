@@ -13,18 +13,13 @@ function usermaven_activation_form() {
     $embed_dashboard = isset( $_POST['embed_dashboard'] ) ? true : false;
 
     $api_key = sanitize_text_field($_POST['api_key']);
+    $server_token = isset($_POST['server_token']) ? sanitize_text_field($_POST['server_token']) : '';
     $custom_domain = '';
-//  $server_token = '';
     $shared_link = '';
 
     if ( ! empty( $_POST['custom_domain'] ) ) {
         $custom_domain = sanitize_url($_POST['custom_domain']);
     }
-
-       # Todo: Server side token code to be included in next release
-//     if ( ! empty( $_POST['server_token'] ) ) {
-//         $server_token = esc_attr($_POST['server_token']);
-//     }
 
     if ( ! empty( $_POST['shared_link'] ) ) {
         $shared_link = sanitize_url($_POST['shared_link']);
@@ -34,7 +29,7 @@ function usermaven_activation_form() {
     $error = '';
     // Validate the API key
     if ( empty( $api_key ) ) {
-         $error = "API key can't be empty";
+      $error = "API key can't be empty";
     }
 
     // check if the url contains http or https, if not add https.
@@ -60,13 +55,18 @@ function usermaven_activation_form() {
 
     if (!$error) {
       // Save the form data in the options table
-        update_option( 'usermaven_autocapture', $autocapture );
-        update_option( 'usermaven_cookie_less_tracking', $cookie_less_tracking );
-        update_option( 'usermaven_identify_verification', $identify_verification );
-        update_option( 'usermaven_embed_dashboard', $embed_dashboard );
-        update_option( 'usermaven_shared_link', $shared_link);
-        update_option( 'usermaven_api_key', $api_key );
-        update_option( 'usermaven_custom_domain', $custom_domain );
+      update_option( 'usermaven_autocapture', $autocapture );
+      update_option( 'usermaven_cookie_less_tracking', $cookie_less_tracking );
+      update_option( 'usermaven_identify_verification', $identify_verification );
+      update_option( 'usermaven_embed_dashboard', $embed_dashboard );
+      update_option( 'usermaven_shared_link', $shared_link);
+      update_option( 'usermaven_api_key', $api_key );
+      update_option( 'usermaven_custom_domain', $custom_domain );
+
+      // Only update server token if it's provided
+      if (!empty($server_token)) {
+        update_option( 'usermaven_server_token', $server_token );
+      }
 
       // Roles to be tracked
         update_option( 'usermaven_role_administrator', isset( $_POST['role_administrator'] ) ? true : false );
@@ -100,27 +100,14 @@ function usermaven_activation_form() {
       <form class="form" method="post">
         <h2 class="form-heading">Usermaven Tracking Setup</h2>
         <div class="input-block">
-        <h3>Authentication</h2>
+        <h3>Authentication</h3>
 
         <p class="input-text">
-        API key is used to authenticate event tracking calls for your workspace. You can get your API key from your '<a href="https://app.usermaven.com/" target="blank">Usermaven account</a>  > Workspace settings > General' page.
+        API key is used to authenticate event tracking calls for your workspace. You can get your API key from your '<a href="https://app.usermaven.com/" target="blank">Usermaven account</a> > Workspace settings > General' page.
         </p>
         <label for="api_key">API Key</label>
         <input type="text" name="api_key" id="api_key" placeholder="Enter your API key here" value="<?php echo esc_attr(get_option('usermaven_api_key')); ?>" required>
-        </div>
-        <div class="input-block">
-        <h3>Bypass adblockers with pixel white-labeling</h2>
-
-        <p class="input-text">
-        By default the tracking host is "https://events.usermaven.com". You can use your own custom domain in the
-        tracking script to bypass ad-blockers. You can read more about it <a href="https://usermaven.com/docs/getting-started/pixel-whitelabeling#1-add-your-custom-domain" target="blank">here</a>.
-
-        </p>
-        <label for="custom_domain">Custom Domain</label>
-        <input type="text" name="custom_domain" id="custom_domain" placeholder="Enter your custom domain here" value="<?php echo esc_attr(get_option('usermaven_custom_domain')); ?>">
-        </div>
-        <!--
-        <div class="input-block">
+        
         <p class="input-text">
         Along with API key, server token is used to authenticate server side event tracking calls for your workspace.
         You can get your server token after making an account in <a href="https://app.usermaven.com/" target="blank"> Usermaven.</a>
@@ -128,7 +115,17 @@ function usermaven_activation_form() {
         <label for="server_token">Server Token (For server side tracking)</label>
         <input type="text" name="server_token" id="server_token" placeholder="Enter your server token here" value="<?php echo esc_attr(get_option('usermaven_server_token')); ?>">
         </div>
-        -->
+        <div class="input-block">
+        <h3>Bypass adblockers with pixel white-labeling</h2>
+
+        <p class="input-text">
+        By default the tracking host is "https://events.usermaven.com". You can use your own custom domain in the
+        tracking script to bypass ad-blockers. You can read more about it <a href="https://usermaven.com/docs/getting-started/pixel-whitelabeling#1-add-your-custom-domain" target="blank">here</a>.
+        </p>
+        <label for="custom_domain">Custom Domain</label>
+        <input type="text" name="custom_domain" id="custom_domain" placeholder="Enter your custom domain here" value="<?php echo esc_attr(get_option('usermaven_custom_domain')); ?>">
+        </div>
+        
         <div class="input-block">
         <h3>Tracking options</h2>
 
