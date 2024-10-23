@@ -324,36 +324,91 @@ class Usermaven_WooCommerce {
         if (WC()->cart->is_empty()) {
             return;
         }
-
-        // Prevent duplicate tracking by checking a session variable
+    
+        // Prevent duplicate tracking
         if (WC()->session->get('usermaven_initiate_checkout_tracked')) {
             return;
         }
-
+    
         $cart = WC()->cart;
         $items = array();
+
+        // Get WC Countries object for location handling
+        $wc_countries = new WC_Countries();
         
-        foreach ($cart->get_cart() as $cart_item) {
+        foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
             $product = $cart_item['data'];
+            if (!($product instanceof WC_Product)) {
+                continue;
+            }
+    
+            // Get product categories
+            $categories = array();
+            $terms = get_the_terms($product->get_id(), 'product_cat');
+            if ($terms && !is_wp_error($terms)) {
+                $categories = wp_list_pluck($terms, 'names');
+            }
+    
             $items[] = array(
                 'product_id' => $product->get_id(),
                 'product_name' => $product->get_name(),
+                'product_sku' => $product->get_sku(),
                 'quantity' => $cart_item['quantity'],
-                'price' => $product->get_price(),
+                'unit_price' => $product->get_price(),
+                'line_total' => $cart_item['line_total'],
+                'line_tax' => $cart_item['line_tax'],
+                'categories' => $categories,
                 'variation_id' => $cart_item['variation_id'] ?? null,
-                'variation' => $cart_item['variation'] ?? null
+                'variation' => $cart_item['variation'] ?? null,
+                'is_on_sale' => $product->is_on_sale(),
+                'stock_status' => $product->get_stock_status()
             );
         }
 
+        $billing_country_code = WC()->customer->get_billing_country();
+        $shipping_country_code = WC()->customer->get_shipping_country();
+    
         $event_attributes = array(
+            // Cart Financial Details
             'total' => $cart->get_total('numeric'),
             'subtotal' => $cart->get_subtotal(),
             'tax' => $cart->get_total_tax(),
             'shipping_total' => $cart->get_shipping_total(),
+            'discount_total' => $cart->get_discount_total(),
             'currency' => get_woocommerce_currency(),
+            
+            // Cart Contents
             'items_count' => $cart->get_cart_contents_count(),
+            'unique_items' => count($cart->get_cart()),
             'items' => $items,
-            'coupons' => $cart->get_applied_coupons()
+            'weight_total' => $cart->get_cart_contents_weight(),
+            
+            // Applied Discounts
+            'coupons' => $cart->get_applied_coupons(),
+            'coupon_discount' => $cart->get_discount_total(),
+            'tax_discount' => $cart->get_discount_tax(),
+            
+            // Shipping Information
+            'needs_shipping' => $cart->needs_shipping(),
+            'shipping_methods' => WC()->session->get('chosen_shipping_methods'),
+            'available_payment_methods' => array_keys(WC()->payment_gateways->get_available_payment_gateways()),
+            
+            // Customer Context
+            'is_logged_in' => is_user_logged_in(),
+            'customer_id' => get_current_user_id(),
+            'session_id' => WC()->session->get_customer_id(),
+            'billing_country_code' => $billing_country_code,
+            'billing_country_name' => $billing_country_code ? $wc_countries->countries[$billing_country_code] : $billing_country_code,
+            'shipping_country_code' => $shipping_country_code,
+            'shipping_country_name' => $shipping_country_code ? $wc_countries->countries[$shipping_country_code] : $shipping_country_code,
+            
+            // Additional Context
+            'device_type' => wp_is_mobile() ? 'mobile' : 'desktop',
+            'referrer' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
+            'timestamp' => current_time('mysql'),
+            'checkout_page' => is_checkout() ? 'standard' : 'custom',
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '',
+            'cart_hash' => WC()->cart->get_cart_hash()
         );
         
         $this->send_event('initiate_checkout', $event_attributes);
@@ -379,7 +434,7 @@ class Usermaven_WooCommerce {
 
         // Get billing country details
         $billing_country_code = $order->get_billing_country();
-        $billing_country_name = $billing_country_code ? $wc_countries->countries[$billing_country_code] : '';
+        $billing_country_name = $billing_country_code ? $wc_countries->countries[$billing_country_code] : $billing_country_code;
         
         // Get billing state details
         $billing_state_code = $order->get_billing_state();
@@ -419,7 +474,9 @@ class Usermaven_WooCommerce {
         // Get order items details
         $items = array();
         foreach ($order->get_items() as $item) {
-            $product = $item->get_product();
+            $product_data = $item->get_data();
+            $product_id = $product_data['product_id'];
+            $product = wc_get_product($product_id);
             if (!$product) {
                 continue;
             }
