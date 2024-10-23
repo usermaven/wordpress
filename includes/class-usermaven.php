@@ -268,6 +268,7 @@ class Usermaven {
     * This function includes the JS tracking snippet in the wordpress website
     */
 	public function usermaven_events_tracking_print_js_snippet() {
+		$tracking_host = $this->tracking_host;
 	    $tracking_path = "https://t.usermaven.com/lib.js";
 	    $api_key = get_option('usermaven_api_key');
 	    if (empty($api_key)) {
