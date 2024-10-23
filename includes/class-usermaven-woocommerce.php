@@ -199,7 +199,7 @@ class Usermaven_WooCommerce {
             'new_quantity' => $quantity,
             'price' => $product->get_price(),
             'currency' => get_woocommerce_currency(),
-            'cart_total' => $cart->get_total(),
+            'cart_total' => $cart->get_total('numeric'),
             'cart_items_count' => $cart->get_cart_contents_count()
         );
 
@@ -235,7 +235,7 @@ class Usermaven_WooCommerce {
         }
 
         $event_attributes = array(
-            'total' => $cart->get_total(),
+            'total' => $cart->get_total('numeric'),
             'subtotal' => $cart->get_subtotal(),
             'tax' => $cart->get_total_tax(),
             'shipping_total' => $cart->get_shipping_total(),
