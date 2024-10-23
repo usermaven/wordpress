@@ -34,7 +34,7 @@ class Usermaven_WooCommerce {
 
         // Checkout Process
         add_action('woocommerce_before_checkout_form', array($this, 'track_initiate_checkout'), 10);
-        add_action('woocommerce_checkout_order_processed', array($this, 'track_checkout_started'), 10, 3);
+        add_action('woocommerce_checkout_order_processed', array($this, 'track_order_submission'), 10, 3);
         
         // Order Status and Completion
         add_action('woocommerce_order_status_changed', array($this, 'track_order_status_changed'), 10, 4);
@@ -252,29 +252,181 @@ class Usermaven_WooCommerce {
     }
 
     /**
-     * Track when checkout process starts
-     */
-    public function track_checkout_started($order_id, $posted_data, $order) {
+    * Comprehensive tracking of order submission with full details
+    *
+    * @param int $order_id The WooCommerce order ID
+    * @param array $posted_data Posted checkout form data
+    * @param WC_Order $order The WooCommerce order object
+    */
+    public function track_order_submission($order_id, $posted_data, $order) {
         if (!$order_id) {
             return;
         }
 
+        // Get WC Countries object for location handling
+        $wc_countries = new WC_Countries();
+
+        // Get billing country details
+        $billing_country_code = $order->get_billing_country();
+        $billing_country_name = $billing_country_code ? $wc_countries->countries[$billing_country_code] : '';
+        
+        // Get billing state details
+        $billing_state_code = $order->get_billing_state();
+        $billing_states = $wc_countries->get_states($billing_country_code);
+        $billing_state_name = ($billing_states && isset($billing_states[$billing_state_code])) 
+            ? $billing_states[$billing_state_code] 
+            : $billing_state_code;
+
+        // Get shipping country details
+        $shipping_country_code = $order->get_shipping_country();
+        
+        // If shipping country is empty, use billing country
+        if (empty($shipping_country_code)) {
+            $shipping_country_code = $billing_country_code;
+            $shipping_country_name = $billing_country_name;
+        } else {
+            $shipping_country_name = $wc_countries->countries[$shipping_country_code];
+        }
+
+        // Get shipping state details
+        $shipping_state_code = $order->get_shipping_state();
+        
+        // If shipping state is empty, use billing state
+        if (empty($shipping_state_code)) {
+            $shipping_state_code = $billing_state_code;
+            $shipping_state_name = $billing_state_name;
+        } else {
+            $shipping_states = $wc_countries->get_states($shipping_country_code);
+            $shipping_state_name = ($shipping_states && isset($shipping_states[$shipping_state_code])) 
+                ? $shipping_states[$shipping_state_code] 
+                : $shipping_state_code;
+        }
+
+        // Get customer information
+        $customer_id = $order->get_customer_id();
+        
+        // Get order items details
+        $items = array();
+        foreach ($order->get_items() as $item) {
+            $product = $item->get_product();
+            if (!$product) {
+                continue;
+            }
+
+            // Get product categories
+            $categories = array();
+            $terms = get_the_terms($product->get_id(), 'product_cat');
+            if ($terms && !is_wp_error($terms)) {
+                $categories = wp_list_pluck($terms, 'name');
+            }
+
+            $items[] = array(
+                'product_id' => $product->get_id(),
+                'product_name' => $product->get_name(),
+                'quantity' => $item->get_quantity(),
+                'price' => $product->get_price(),
+                'subtotal' => $item->get_subtotal(),
+                'total' => $item->get_total(),
+                'sku' => $product->get_sku(),
+                'categories' => $categories,
+                'variation_id' => $product->is_type('variation') ? $product->get_id() : null,
+                'variation_attributes' => $product->is_type('variation') ? $product->get_attributes() : null
+            );
+        }
+
+        // Prepare complete event attributes
         $event_attributes = array(
+            // Order Details
             'order_id' => $order_id,
+            'order_currency' => $order->get_currency(),
+            'created_via' => $order->get_created_via(),
+            'prices_include_tax' => $order->get_prices_include_tax(),
+            
+            // Financial Details
             'total' => $order->get_total(),
-            'currency' => $order->get_currency(),
+            'subtotal' => $order->get_subtotal(),
+            'tax_total' => $order->get_total_tax(),
+            'shipping_total' => $order->get_shipping_total(),
+            'discount_total' => $order->get_total_discount(),
+            'cart_tax' => $order->get_cart_tax(),
+            'shipping_tax' => $order->get_shipping_tax(),
+            
+            // Payment Details
             'payment_method' => $order->get_payment_method(),
             'payment_method_title' => $order->get_payment_method_title(),
+            'transaction_id' => $order->get_transaction_id(),
+            
+            // Customer Information
+            'customer_id' => $customer_id ?: null,
+            'customer_type' => $customer_id ? 'registered' : 'guest',
+            'is_registered_customer' => (bool)$customer_id,
+            'is_returning_customer' => $this->is_returning_customer($customer_id, $order->get_billing_email()),
+            
+            // Billing Details
+            'billing_first_name' => $order->get_billing_first_name(),
+            'billing_last_name' => $order->get_billing_last_name(),
+            'billing_company' => $order->get_billing_company(),
             'billing_email' => $order->get_billing_email(),
-            'billing_country' => $order->get_billing_country(),
-            'billing_state' => $order->get_billing_state(),
-            'shipping_country' => $order->get_shipping_country(),
-            'shipping_state' => $order->get_shipping_state(),
+            'billing_phone' => $order->get_billing_phone(),
+            'billing_country' => $billing_country_name,
+            'billing_country_code' => $billing_country_code,
+            'billing_state' => $billing_state_name,
+            'billing_state_code' => $billing_state_code,
+            'billing_city' => $order->get_billing_city(),
+            'billing_postcode' => $order->get_billing_postcode(),
+            
+            // Shipping Details
+            'shipping_first_name' => $order->get_shipping_first_name() ?: $order->get_billing_first_name(),
+            'shipping_last_name' => $order->get_shipping_last_name() ?: $order->get_billing_last_name(),
+            'shipping_company' => $order->get_shipping_company() ?: $order->get_billing_company(),
+            'shipping_country' => $shipping_country_name,
+            'shipping_country_code' => $shipping_country_code,
+            'shipping_state' => $shipping_state_name,
+            'shipping_state_code' => $shipping_state_code,
+            'shipping_city' => $order->get_shipping_city() ?: $order->get_billing_city(),
+            'shipping_postcode' => $order->get_shipping_postcode() ?: $order->get_billing_postcode(),
+            'shipping_same_as_billing' => empty($order->get_shipping_country()),
+            
+            // Items Information
             'items_count' => $order->get_item_count(),
-            'is_paying_customer' => $order->get_customer_id() ? true : false
+            'items' => $items,
+            
+            // Additional Details
+            'customer_note' => $order->get_customer_note(),
+            'order_status' => $order->get_status(),
+            'coupon_codes' => $order->get_coupon_codes(),
         );
 
-        $this->send_event('checkout_started', $event_attributes);
+        $this->send_event('order_submitted', $event_attributes);
+    }
+
+    /**
+     * Check if this is a returning customer based on previous orders
+     *
+     * @param int|null $customer_id Customer ID if registered
+     * @param string $billing_email Customer's email address
+     * @return bool True if customer has previous orders
+     */
+    private function is_returning_customer($customer_id, $billing_email) {
+        if ($customer_id) {
+            // For registered customers, check orders by customer ID
+            $previous_orders = wc_get_orders(array(
+                'customer_id' => $customer_id,
+                'status' => array('wc-completed'),
+                'limit' => 1,
+                'return' => 'ids',
+            ));
+            return !empty($previous_orders);
+        } else {
+            // For guest customers, check orders by email
+            $previous_orders = wc_get_orders(array(
+                'billing_email' => $billing_email,
+                'status' => array('wc-completed'),
+                'limit' => 1,
+                'return' => 'ids',
+            ));
+            return !empty($previous_orders);
+        }
     }
 
     /**
