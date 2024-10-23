@@ -152,7 +152,7 @@ function usermaven_activation_form() {
         </label>
         </div>
         <div class="input-block">
-        <h3>Exclude visits from tracking</h3>
+        <h3>Enable tracking for user roles</h3>
 
         <p class="input-text">
         By default, visits from logged in users are not tracked. If you want to track visits from certain user roles, you can enable this setting.
