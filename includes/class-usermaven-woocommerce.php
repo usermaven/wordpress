@@ -135,22 +135,56 @@ class Usermaven_WooCommerce {
         if (!$product) {
             return;
         }
-
+    
+        // Get product categories
+        $categories = array();
+        $terms = get_the_terms($product->get_id(), 'product_cat');
+        if ($terms && !is_wp_error($terms)) {
+            $categories = wp_list_pluck($terms, 'name');
+        }
+    
         $event_attributes = array(
+            // Product Information
             'product_id' => $product_id,
             'product_name' => $product->get_name(),
+            'product_sku' => $product->get_sku(),
+            'product_type' => $product->get_type(),
+            'categories' => $categories,
+            'tags' => wp_get_post_terms($product_id, 'product_tag', array('fields' => 'names')),
+            
+            // Quantity and Price Details
             'quantity' => $quantity,
-            'price' => $product->get_price(),
+            'unit_price' => $product->get_price(),
+            'regular_price' => $product->get_regular_price(),
+            'sale_price' => $product->get_sale_price(),
+            'price_total' => $quantity * $product->get_price(),
             'currency' => get_woocommerce_currency(),
+            'is_on_sale' => $product->is_on_sale(),
+            
+            // Stock Information
+            'stock_status' => $product->get_stock_status(),
+            'stock_quantity' => $product->get_stock_quantity(),
+            'is_in_stock' => $product->is_in_stock(),
+            
+            // Variation Details
+            'variation_id' => $variation_id,
+            'variation_attributes' => $variation,
+            
+            // Cart State
             'cart_total' => WC()->cart->get_cart_contents_total(),
+            'cart_subtotal' => WC()->cart->get_subtotal(),
+            'cart_tax' => WC()->cart->get_cart_tax(),
             'cart_items_count' => WC()->cart->get_cart_contents_count(),
+            'cart_unique_items' => count(WC()->cart->get_cart()),
+            'applied_coupons' => WC()->cart->get_applied_coupons(),
+            
+            // Additional Context
+            'added_from' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
+            'device_type' => wp_is_mobile() ? 'mobile' : 'desktop',
+            'timestamp' => current_time('mysql'),
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
         );
-        
-        if ($variation_id && $variation) {
-            $event_attributes['variation_id'] = $variation_id;
-            $event_attributes['variation_attributes'] = $variation;
-        }
-
+    
         $this->send_event('add_to_cart', $event_attributes);
     }
 
@@ -162,23 +196,56 @@ class Usermaven_WooCommerce {
         if (!$cart_item) {
             return;
         }
-
+    
         $product_id = $cart_item['product_id'];
         $product = wc_get_product($product_id);
         if (!$product) {
             return;
         }
-
+    
+        // Get product categories
+        $categories = array();
+        $terms = get_the_terms($product->get_id(), 'product_cat');
+        if ($terms && !is_wp_error($terms)) {
+            $categories = wp_list_pluck($terms, 'name');
+        }
+    
         $event_attributes = array(
+            // Product Information
             'product_id' => $product_id,
             'product_name' => $product->get_name(),
-            'price' => $product->get_price(),
-            'quantity' => $cart_item['quantity'],
+            'product_sku' => $product->get_sku(),
+            'product_type' => $product->get_type(),
+            'categories' => $categories,
+            'tags' => wp_get_post_terms($product_id, 'product_tag', array('fields' => 'names')),
+            
+            // Removed Item Details
+            'quantity_removed' => $cart_item['quantity'],
+            'line_total' => $cart_item['line_total'],
+            'line_tax' => $cart_item['line_tax'],
+            'price_per_unit' => $product->get_price(),
             'currency' => get_woocommerce_currency(),
+            
+            // Variation Details (if applicable)
+            'variation_id' => $cart_item['variation_id'] ?? null,
+            'variation_attributes' => $cart_item['variation'] ?? null,
+            
+            // Cart State After Removal
             'cart_total' => $cart->get_cart_contents_total(),
-            'remaining_items' => $cart->get_cart_contents_count()
+            'cart_subtotal' => $cart->get_subtotal(),
+            'cart_tax' => $cart->get_cart_tax(),
+            'remaining_items' => $cart->get_cart_contents_count(),
+            'remaining_unique_items' => count($cart->get_cart()),
+            'applied_coupons' => $cart->get_applied_coupons(),
+            
+            // Additional Context
+            'removed_from_page' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
+            'device_type' => wp_is_mobile() ? 'mobile' : 'desktop',
+            'timestamp' => current_time('mysql'),
+            'session_id' => WC()->session->get_customer_id(),
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
         );
-
+    
         $this->send_event('remove_from_cart', $event_attributes);
     }
 
@@ -190,19 +257,63 @@ class Usermaven_WooCommerce {
         if (!$cart_item) {
             return;
         }
-
-        $product = $cart_item['data'];
+    
+        $product_id = $cart_item['product_id'];
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            return;
+        }
+    
+        // Get product categories
+        $categories = array();
+        $terms = get_the_terms($product->get_id(), 'product_cat');
+        if ($terms && !is_wp_error($terms)) {
+            $categories = wp_list_pluck($terms, 'name');
+        }
+    
         $event_attributes = array(
+            // Product Information
             'product_id' => $product->get_id(),
             'product_name' => $product->get_name(),
+            'product_sku' => $product->get_sku(),
+            'product_type' => $product->get_type(),
+            'categories' => $categories,
+            'tags' => wp_get_post_terms($product->get_id(), 'product_tag', array('fields' => 'names')),
+            
+            // Quantity Change Details
             'old_quantity' => $old_quantity,
             'new_quantity' => $quantity,
-            'price' => $product->get_price(),
+            'quantity_change' => $quantity - $old_quantity,
+            'unit_price' => $product->get_price(),
+            'old_line_total' => $old_quantity * $product->get_price(),
+            'new_line_total' => $quantity * $product->get_price(),
             'currency' => get_woocommerce_currency(),
+            
+            // Variation Details
+            'variation_id' => $cart_item['variation_id'] ?? null,
+            'variation_attributes' => $cart_item['variation'] ?? null,
+            
+            // Cart State
             'cart_total' => $cart->get_total('numeric'),
-            'cart_items_count' => $cart->get_cart_contents_count()
+            'cart_subtotal' => $cart->get_subtotal(),
+            'cart_tax' => $cart->get_cart_tax(),
+            'cart_items_count' => $cart->get_cart_contents_count(),
+            'cart_unique_items' => count($cart->get_cart()),
+            'applied_coupons' => $cart->get_applied_coupons(),
+            'cart_discount' => $cart->get_discount_total(),
+            
+            // Stock Information
+            'stock_status' => $product->get_stock_status(),
+            'remaining_stock' => $product->get_stock_quantity(),
+            
+            // Additional Context
+            'update_source' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
+            'device_type' => wp_is_mobile() ? 'mobile' : 'desktop',
+            'timestamp' => current_time('mysql'),
+            'session_id' => WC()->session->get_customer_id(),
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
         );
-
+    
         $this->send_event('update_cart_item', $event_attributes);
     }
 
