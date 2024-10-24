@@ -630,46 +630,120 @@ class Usermaven_WooCommerce {
         if (!$order) {
             return;
         }
-
+    
         $items = array();
         foreach ($order->get_items() as $item) {
-            $product = $item->get_product();
+            $product_data = $item->get_data();
+            $product_id = $product_data['product_id'];
+            $product = wc_get_product($product_id);
             if (!$product) {
                 continue;
             }
-
+    
+            // Get product categories
+            $categories = array();
+            $terms = get_the_terms($product->get_id(), 'product_cat');
+            if ($terms && !is_wp_error($terms)) {
+                $categories = wp_list_pluck($terms, 'names');
+            }
+    
             $items[] = array(
                 'product_id' => $product->get_id(),
                 'product_name' => $product->get_name(),
+                'product_sku' => $product->get_sku(),
                 'quantity' => $item->get_quantity(),
-                'price' => $product->get_price(),
+                'unit_price' => $product->get_price(),
                 'subtotal' => $item->get_subtotal(),
                 'total' => $item->get_total(),
-                'tax' => $item->get_total_tax()
+                'tax' => $item->get_total_tax(),
+                'categories' => $categories,
+                'variation_id' => $item->get_variation_id(),
+                'variation_attributes' => $product->is_type('variation') ? $product->get_attributes() : null
             );
         }
-
+    
+        // Get shipping methods
+        $shipping_methods = array();
+        foreach ($order->get_shipping_methods() as $shipping_method) {
+            $shipping_methods[] = array(
+                'method_id' => $shipping_method->get_method_id(),
+                'method_title' => $shipping_method->get_method_title(),
+                'total' => $shipping_method->get_total(),
+                'total_tax' => $shipping_method->get_total_tax()
+            );
+        }
+    
         $event_attributes = array(
+            // Order Information
             'order_id' => $order_id,
+            'order_number' => $order->get_order_number(),
+            'order_key' => $order->get_order_key(),
+            'created_via' => $order->get_created_via(),
+            'order_version' => $order->get_version(),
+            
+            // Financial Details
+            'currency' => $order->get_currency(),
             'total' => $order->get_total(),
             'subtotal' => $order->get_subtotal(),
-            'shipping_total' => $order->get_shipping_total(),
             'tax_total' => $order->get_total_tax(),
-            'currency' => $order->get_currency(),
+            'shipping_total' => $order->get_shipping_total(),
+            'discount_total' => $order->get_discount_total(),
+            'discount_tax' => $order->get_discount_tax(),
+            
+            // Payment Details
             'payment_method' => $order->get_payment_method(),
             'payment_method_title' => $order->get_payment_method_title(),
+            'transaction_id' => $order->get_transaction_id(),
+            'date_paid' => $order->get_date_paid() ? $order->get_date_paid()->format('Y-m-d H:i:s') : null,
+            
+            // Order Contents
             'items_count' => $order->get_item_count(),
             'items' => $items,
-            'billing_email' => $order->get_billing_email(),
-            'billing_country' => $order->get_billing_country(),
-            'billing_state' => $order->get_billing_state(),
-            'shipping_country' => $order->get_shipping_country(),
-            'shipping_state' => $order->get_shipping_state(),
-            'coupons' => $order->get_coupon_codes(),
+            'shipping_methods' => $shipping_methods,
+            
+            // Customer Information
+            'customer_id' => $order->get_customer_id(),
+            'customer_ip_address' => $order->get_customer_ip_address(),
+            'customer_user_agent' => $order->get_customer_user_agent(),
             'is_first_order' => $this->is_first_order($order->get_customer_id()),
-            'customer_note' => $order->get_customer_note()
+            'customer_note' => $order->get_customer_note(),
+            
+            // Billing Details
+            'billing_email' => $order->get_billing_email(),
+            'billing_phone' => $order->get_billing_phone(),
+            'billing_first_name' => $order->get_billing_first_name(),
+            'billing_last_name' => $order->get_billing_last_name(),
+            'billing_company' => $order->get_billing_company(),
+            'billing_address_1' => $order->get_billing_address_1(),
+            'billing_address_2' => $order->get_billing_address_2(),
+            'billing_city' => $order->get_billing_city(),
+            'billing_state' => $order->get_billing_state(),
+            'billing_postcode' => $order->get_billing_postcode(),
+            'billing_country' => $order->get_billing_country(),
+            
+            // Shipping Details
+            'shipping_first_name' => $order->get_shipping_first_name(),
+            'shipping_last_name' => $order->get_shipping_last_name(),
+            'shipping_company' => $order->get_shipping_company(),
+            'shipping_address_1' => $order->get_shipping_address_1(),
+            'shipping_address_2' => $order->get_shipping_address_2(),
+            'shipping_city' => $order->get_shipping_city(),
+            'shipping_state' => $order->get_shipping_state(),
+            'shipping_postcode' => $order->get_shipping_postcode(),
+            'shipping_country' => $order->get_shipping_country(),
+            
+            // Marketing Data
+            'coupons_used' => $order->get_coupon_codes(),
+            'marketing_source' => get_post_meta($order_id, '_marketing_source', true),
+            'marketing_medium' => get_post_meta($order_id, '_marketing_medium', true),
+            'marketing_campaign' => get_post_meta($order_id, '_marketing_campaign', true),
+            
+            // Additional Context
+            'completion_date' => current_time('mysql'),
+            'order_processing_time' => $this->calculate_processing_time($order),
+            'device_type' => wp_is_mobile() ? 'mobile' : 'desktop'
         );
-
+    
         $this->send_event('order_completed', $event_attributes);
     }
 
@@ -719,25 +793,63 @@ class Usermaven_WooCommerce {
      * Track failed order events
      */
     public function track_failed_order($order_id, $order) {
+        if (!($order instanceof WC_Order)) {
+            return;
+        }
+    
         $items = $this->get_order_items($order);
-
+        $payment_gateway = wc_get_payment_gateway_by_order($order);
+    
         $event_attributes = array(
+            // Order Information
             'order_id' => $order_id,
+            'order_number' => $order->get_order_number(),
+            'order_key' => $order->get_order_key(),
+            'created_via' => $order->get_created_via(),
+            
+            // Financial Details
             'total' => $order->get_total(),
             'currency' => $order->get_currency(),
+            'subtotal' => $order->get_subtotal(),
+            'tax_total' => $order->get_total_tax(),
+            'shipping_total' => $order->get_shipping_total(),
+            
+            // Payment Details
             'payment_method' => $order->get_payment_method(),
             'payment_method_title' => $order->get_payment_method_title(),
+            'transaction_id' => $order->get_transaction_id(),
+            'gateway_response' => $payment_gateway ? $payment_gateway->get_last_error() : '',
+            
+            // Order Contents
             'items' => $items,
-            'failure_message' => $order->get_status_message(),
-            'billing_email' => $order->get_billing_email(),
-            'billing_country' => $order->get_billing_country(),
-            'shipping_country' => $order->get_shipping_country(),
-            'customer_note' => $order->get_customer_note(),
-            'created_via' => $order->get_created_via(),
+            'items_count' => $order->get_item_count(),
+            
+            // Customer Information
             'customer_id' => $order->get_customer_id(),
-            'user_agent' => $order->get_customer_user_agent()
+            'customer_ip' => $order->get_customer_ip_address(),
+            'user_agent' => $order->get_customer_user_agent(),
+            'billing_email' => $order->get_billing_email(),
+            'is_guest' => $order->get_customer_id() === 0,
+            
+            // Location Information
+            'billing_country' => $order->get_billing_country(),
+            'billing_state' => $order->get_billing_state(),
+            'shipping_country' => $order->get_shipping_country(),
+            'shipping_state' => $order->get_shipping_state(),
+            
+            // Failure Details
+            'failure_message' => $order->get_status_message(),
+            'failure_codes' => get_post_meta($order_id, '_failure_codes', true),
+            'attempts' => get_post_meta($order_id, '_retry_attempts', true),
+            
+            // Additional Context
+            'device_type' => wp_is_mobile() ? 'mobile' : 'desktop',
+            'timestamp' => current_time('mysql'),
+            'session_id' => WC()->session->get_customer_id(),
+            'cart_hash' => $order->get_cart_hash(),
+            'previous_order_count' => $this->get_customer_order_count($order->get_customer_id(), $order->get_billing_email())
         );
-
+    
         $this->send_event('order_failed', $event_attributes);
     }
 
