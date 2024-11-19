@@ -39,6 +39,7 @@ class Usermaven_WooCommerce {
         // Order Status and Completion
         add_action('woocommerce_order_status_changed', array($this, 'track_order_status_changed'), 10, 4);
         add_action('woocommerce_payment_complete', array($this, 'track_order_completed'));
+        // add_action('woocommerce_order_status_completed', array($this, 'track_order_completed'), 10, 1);
         add_action('woocommerce_order_status_failed', array($this, 'track_failed_order'), 10, 2);
         add_action('woocommerce_thankyou', array($this, 'track_order_thankyou'), 10, 1);
         add_action('woocommerce_order_refunded', array($this, 'track_order_refunded'), 10, 2);
@@ -106,14 +107,14 @@ class Usermaven_WooCommerce {
     
             // Prepare event attributes
             $event_attributes = array(
-                'product_id' => $product->get_id(),
-                'product_name' => $product->get_name(),
-                'price' => $product->get_price(),
-                'currency' => get_woocommerce_currency(),
-                'type' => $product->get_type(),
-                'categories' => $categories,
-                'sku' => $product->get_sku(),
-                'stock_status' => $product->get_stock_status(),
+                'product_id' => (int) $product->get_id(),
+                'product_name' => (string) $product->get_name(),
+                'price' => (float) $product->get_price(),
+                'currency' => (string) get_woocommerce_currency(),
+                'type' => (string) $product->get_type(),
+                'categories' => array_map('strval', $categories),
+                'sku' => (string) $product->get_sku(),
+                'stock_status' => (string) $product->get_stock_status(),
                 'view_type' => 'detail'
             );
     
@@ -143,46 +144,63 @@ class Usermaven_WooCommerce {
             $categories = wp_list_pluck($terms, 'name');
         }
     
+        // Cast variation attributes to proper format
+        $variation_attributes = array();
+        if (is_array($variation)) {
+            foreach ($variation as $attr_key => $attr_value) {
+                $clean_key = str_replace('attribute_', '', $attr_key);
+                $variation_attributes[$clean_key] = (string) $attr_value;
+            }
+        }
+    
+        // Get and validate prices
+        $unit_price = $product->get_price();
+        $unit_price = $unit_price === '' ? 0.0 : (float) $unit_price;
+        $price_total = (float) ($quantity * $unit_price);
+        
         $event_attributes = array(
-            // Product Information
-            'product_id' => $product_id,
-            'product_name' => $product->get_name(),
-            'product_sku' => $product->get_sku(),
-            'product_type' => $product->get_type(),
-            'categories' => $categories,
-            'tags' => wp_get_post_terms($product_id, 'product_tag', array('fields' => 'names')),
-            
-            // Quantity and Price Details
-            'quantity' => $quantity,
-            'unit_price' => $product->get_price(),
-            'regular_price' => $product->get_regular_price(),
-            'sale_price' => $product->get_sale_price(),
-            'price_total' => $quantity * $product->get_price(),
-            'currency' => get_woocommerce_currency(),
-            'is_on_sale' => $product->is_on_sale(),
-            
-            // Stock Information
-            'stock_status' => $product->get_stock_status(),
-            'stock_quantity' => $product->get_stock_quantity(),
-            'is_in_stock' => $product->is_in_stock(),
-            
-            // Variation Details
-            'variation_id' => $variation_id,
-            'variation_attributes' => $variation,
-            
-            // Cart State
-            'cart_total' => WC()->cart->get_cart_contents_total(),
-            'cart_subtotal' => WC()->cart->get_subtotal(),
-            'cart_tax' => WC()->cart->get_cart_tax(),
-            'cart_items_count' => WC()->cart->get_cart_contents_count(),
-            'cart_unique_items' => count(WC()->cart->get_cart()),
-            'applied_coupons' => WC()->cart->get_applied_coupons(),
-            
-            // Additional Context
-            'added_from' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
-            'device_type' => wp_is_mobile() ? 'mobile' : 'desktop',
-            'timestamp' => current_time('mysql'),
-            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
+            // UInt32 fields
+            'quantity' => (int) $quantity,
+            'product_id' => (int) $product_id,
+            'cart_items_count' => (int) WC()->cart->get_cart_contents_count(),
+            'cart_unique_items' => (int) count(WC()->cart->get_cart()),
+            'variation_id' => (int) $variation_id,
+    
+            // Float64 fields
+            'cart_total' => (float) WC()->cart->get_cart_contents_total(),
+            'price_total' => $price_total,
+            'unit_price' => $unit_price,
+            'cart_subtotal' => (float) WC()->cart->get_subtotal(),
+            'cart_tax' => (float) WC()->cart->get_cart_tax(),
+            'regular_price' => (float) $product->get_regular_price(),
+            'sale_price' => (float) $product->get_sale_price(),
+    
+            // Nullable UInt32
+            'stock_quantity' => $product->get_stock_quantity() !== null ? 
+                (int) $product->get_stock_quantity() : 
+                null,
+    
+            // String fields
+            'product_name' => (string) $product->get_name(),
+            'currency' => (string) get_woocommerce_currency(),
+            'product_sku' => (string) $product->get_sku(),
+            'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
+            'product_type' => (string) $product->get_type(),
+            'stock_status' => (string) $product->get_stock_status(),
+            'added_from' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
+            'user_agent' => (string) (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''),
+    
+            // Boolean fields
+            'is_on_sale' => (bool) $product->is_on_sale(),
+            'is_in_stock' => (bool) $product->is_in_stock(),
+    
+            // Array fields
+            'categories' => array_map('strval', $categories),
+            'tags' => array_map('strval', wp_get_post_terms($product_id, 'product_tag', array('fields' => 'names'))),
+            'applied_coupons' => array_map('strval', WC()->cart->get_applied_coupons()),
+    
+            // JSON object
+            'variation_attributes' => $variation_attributes
         );
     
         $this->send_event('add_to_cart', $event_attributes);
