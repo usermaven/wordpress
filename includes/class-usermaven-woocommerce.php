@@ -115,7 +115,6 @@ class Usermaven_WooCommerce {
                 'categories' => array_map('strval', $categories),
                 'sku' => (string) $product->get_sku(),
                 'stock_status' => (string) $product->get_stock_status(),
-                'view_type' => 'detail'
             );
     
             // Send the event
@@ -148,8 +147,7 @@ class Usermaven_WooCommerce {
         $variation_attributes = array();
         if (is_array($variation)) {
             foreach ($variation as $attr_key => $attr_value) {
-                $clean_key = str_replace('attribute_', '', $attr_key);
-                $variation_attributes[$clean_key] = (string) $attr_value;
+                $variation_attributes[$attr_key] = (string) $attr_value;
             }
         }
     
