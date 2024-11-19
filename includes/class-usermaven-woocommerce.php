@@ -226,40 +226,53 @@ class Usermaven_WooCommerce {
             $categories = wp_list_pluck($terms, 'name');
         }
     
+        // Process variation attributes
+        $variation_attributes = array();
+        if (!empty($cart_item['variation'])) {
+            foreach ($cart_item['variation'] as $attr_key => $attr_value) {
+                $variation_attributes[$attr_key] = (string) $attr_value;
+            }
+        }
+    
+        // Get line totals and ensure they're properly typed
+        $line_total = !empty($cart_item['line_total']) ? (float) $cart_item['line_total'] : 0.0;
+        $line_tax = !empty($cart_item['line_tax']) ? (float) $cart_item['line_tax'] : 0.0;
+        $price_per_unit = $product->get_price();
+        $price_per_unit = $price_per_unit === '' ? 0.0 : (float) $price_per_unit;
+    
         $event_attributes = array(
-            // Product Information
-            'product_id' => $product_id,
-            'product_name' => $product->get_name(),
-            'product_sku' => $product->get_sku(),
-            'product_type' => $product->get_type(),
-            'categories' => $categories,
-            'tags' => wp_get_post_terms($product_id, 'product_tag', array('fields' => 'names')),
-            
-            // Removed Item Details
-            'quantity_removed' => $cart_item['quantity'],
-            'line_total' => $cart_item['line_total'],
-            'line_tax' => $cart_item['line_tax'],
-            'price_per_unit' => $product->get_price(),
-            'currency' => get_woocommerce_currency(),
-            
-            // Variation Details (if applicable)
-            'variation_id' => $cart_item['variation_id'] ?? null,
-            'variation_attributes' => $cart_item['variation'] ?? null,
-            
-            // Cart State After Removal
-            'cart_total' => $cart->get_cart_contents_total(),
-            'cart_subtotal' => $cart->get_subtotal(),
-            'cart_tax' => $cart->get_cart_tax(),
-            'remaining_items' => $cart->get_cart_contents_count(),
-            'remaining_unique_items' => count($cart->get_cart()),
-            'applied_coupons' => $cart->get_applied_coupons(),
-            
-            // Additional Context
-            'removed_from_page' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
-            'device_type' => wp_is_mobile() ? 'mobile' : 'desktop',
-            'timestamp' => current_time('mysql'),
-            'session_id' => WC()->session->get_customer_id(),
-            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
+            // Float64 fields
+            'cart_total' => (float) $cart->get_cart_contents_total(),
+            'cart_subtotal' => (float) $cart->get_subtotal(),
+            'cart_tax' => (float) $cart->get_cart_tax(),
+            'price_per_unit' => $price_per_unit,
+            'line_tax' => $line_tax,
+            'line_total' => $line_total,
+    
+            // UInt32 fields
+            'remaining_unique_items' => (int) count($cart->get_cart()),
+            'product_id' => (int) $product_id,
+            'variation_id' => !empty($cart_item['variation_id']) ? (int) $cart_item['variation_id'] : 0,
+            'remaining_items' => (int) $cart->get_cart_contents_count(),
+            'quantity_removed' => (int) $cart_item['quantity'],
+    
+            // String fields
+            'product_name' => (string) $product->get_name(),
+            'product_sku' => (string) $product->get_sku(),
+            'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
+            'removed_from_page' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
+            'currency' => (string) get_woocommerce_currency(),
+            'session_id' => (string) WC()->session->get_customer_id(),
+            'user_agent' => (string) (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''),
+            'product_type' => (string) $product->get_type(),
+    
+            // Array fields
+            'categories' => array_map('strval', $categories),
+            'tags' => array_map('strval', wp_get_post_terms($product_id, 'product_tag', array('fields' => 'names'))),
+            'applied_coupons' => array_map('strval', $cart->get_applied_coupons()),
+    
+            // JSON object
+            'variation_attributes' => $variation_attributes
         );
     
         $this->send_event('remove_from_cart', $event_attributes);
