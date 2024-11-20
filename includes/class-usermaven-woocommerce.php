@@ -490,21 +490,22 @@ class Usermaven_WooCommerce {
         if (!$order_id) {
             return;
         }
-
+    
         // Get WC Countries object for location handling
         $wc_countries = new WC_Countries();
-
+    
         // Get billing country details
         $billing_country_code = $order->get_billing_country();
-        $billing_country_name = $billing_country_code ? $wc_countries->countries[$billing_country_code] : $billing_country_code;
+        $billing_country_name = $billing_country_code && isset($wc_countries->countries[$billing_country_code]) ? 
+            $wc_countries->countries[$billing_country_code] : '';
         
         // Get billing state details
         $billing_state_code = $order->get_billing_state();
         $billing_states = $wc_countries->get_states($billing_country_code);
         $billing_state_name = ($billing_states && isset($billing_states[$billing_state_code])) 
             ? $billing_states[$billing_state_code] 
-            : $billing_state_code;
-
+            : '';
+    
         // Get shipping country details
         $shipping_country_code = $order->get_shipping_country();
         
@@ -513,9 +514,10 @@ class Usermaven_WooCommerce {
             $shipping_country_code = $billing_country_code;
             $shipping_country_name = $billing_country_name;
         } else {
-            $shipping_country_name = $wc_countries->countries[$shipping_country_code];
+            $shipping_country_name = isset($wc_countries->countries[$shipping_country_code]) ? 
+                $wc_countries->countries[$shipping_country_code] : '';
         }
-
+    
         // Get shipping state details
         $shipping_state_code = $order->get_shipping_state();
         
@@ -527,9 +529,9 @@ class Usermaven_WooCommerce {
             $shipping_states = $wc_countries->get_states($shipping_country_code);
             $shipping_state_name = ($shipping_states && isset($shipping_states[$shipping_state_code])) 
                 ? $shipping_states[$shipping_state_code] 
-                : $shipping_state_code;
+                : '';
         }
-
+    
         // Get customer information
         $customer_id = $order->get_customer_id();
         
@@ -537,96 +539,132 @@ class Usermaven_WooCommerce {
         $items = array();
         foreach ($order->get_items() as $item) {
             $product_data = $item->get_data();
-            $product_id = $product_data['product_id'];
-            $product = wc_get_product($product_id);
+            $product = wc_get_product($product_data['product_id']);
             if (!$product) {
                 continue;
             }
-
-            // Get product categories
+    
+            // Get parent product if variation
+            $parent_product = $product;
+            $variation_id = $item->get_variation_id();
+            if ($variation_id) {
+                $parent_product = wc_get_product($product->get_id()); // This is actually parent ID
+                $product = wc_get_product($variation_id); // Get variation product
+                if (!$parent_product || !$product) {
+                    continue;
+                }
+            }
+    
+            // Get product categories from parent product
             $categories = array();
-            $terms = get_the_terms($product->get_id(), 'product_cat');
+            $terms = get_the_terms($parent_product->get_id(), 'product_cat');
             if ($terms && !is_wp_error($terms)) {
                 $categories = wp_list_pluck($terms, 'name');
             }
+    
+            // Process variation attributes from order item
+            $variation_attributes = array();
+            if ($variation_id) {
+                // Method 1: Try getting from item metadata
+                $variation_data = $item->get_meta_data();
+                foreach ($variation_data as $meta) {
+                    $meta_key = $meta->key;
+                    // Only include attribute variations
+                    if (strpos($meta_key, 'pa_') === 0) {
+                        $variation_attributes['attribute_' . $meta_key] = (string) $meta->value;
+                    }
+                }
 
+                // Method 2: If attributes are missing, try getting from variation product
+                if ($product instanceof WC_Product_Variation) {
+                    $attributes = $product->get_variation_attributes();
+                    foreach ($attributes as $key => $value) {
+                        $attr_key = str_replace('attribute_', '', strtolower($key));
+                        if (!isset($variation_attributes['attribute_' . $attr_key])) {
+                            $variation_attributes['attribute_' . $attr_key] = (string) $value;
+                        }
+                    }
+                }
+            }
+    
             $items[] = array(
-                'product_id' => $product->get_id(),
-                'product_name' => $product->get_name(),
-                'quantity' => $item->get_quantity(),
-                'price' => $product->get_price(),
-                'subtotal' => $item->get_subtotal(),
-                'total' => $item->get_total(),
-                'sku' => $product->get_sku(),
-                'categories' => $categories,
-                'variation_id' => $product->is_type('variation') ? $product->get_id() : null,
-                'variation_attributes' => $product->is_type('variation') ? $product->get_attributes() : null
+                'product_id' => (int) $parent_product->get_id(),
+                'product_name' => (string) $parent_product->get_name(),
+                'quantity' => (int) $item->get_quantity(),
+                'price' => (float) $product->get_price(),
+                'subtotal' => (float) $item->get_subtotal(),
+                'total' => (float) $item->get_total(),
+                'sku' => (string) $product->get_sku(),
+                'categories' => array_map('strval', $categories),
+                'variation_id' => $variation_id ? (int) $variation_id : null,
+                'variation_attributes' => $variation_attributes
             );
         }
-
+    
         // Prepare complete event attributes
         $event_attributes = array(
             // Order Details
-            'order_id' => $order_id,
-            'order_currency' => $order->get_currency(),
-            'created_via' => $order->get_created_via(),
-            'prices_include_tax' => $order->get_prices_include_tax(),
+            'order_id' => (int) $order_id,
+            'order_currency' => (string) $order->get_currency(),
+            'created_via' => (string) $order->get_created_via(),
+            'prices_include_tax' => (bool) $order->get_prices_include_tax(),
             
             // Financial Details
-            'total' => $order->get_total(),
-            'subtotal' => $order->get_subtotal(),
-            'tax_total' => $order->get_total_tax(),
-            'shipping_total' => $order->get_shipping_total(),
-            'discount_total' => $order->get_total_discount(),
-            'cart_tax' => $order->get_cart_tax(),
-            'shipping_tax' => $order->get_shipping_tax(),
+            'total' => (float) $order->get_total(),
+            'subtotal' => (float) $order->get_subtotal(),
+            'tax_total' => (float) $order->get_total_tax(),
+            'shipping_total' => (float) $order->get_shipping_total(),
+            'discount_total' => (float) $order->get_total_discount(),
+            'cart_tax' => (float) $order->get_cart_tax(),
+            'shipping_tax' => (float) $order->get_shipping_tax(),
             
             // Payment Details
-            'payment_method' => $order->get_payment_method(),
-            'payment_method_title' => $order->get_payment_method_title(),
-            'transaction_id' => $order->get_transaction_id(),
+            'payment_method' => (string) $order->get_payment_method(),
+            'payment_method_title' => (string) $order->get_payment_method_title(),
+            'transaction_id' => (int) $order->get_transaction_id(),
             
             // Customer Information
-            'customer_id' => $customer_id ?: null,
-            'customer_type' => $customer_id ? 'registered' : 'guest',
-            'is_registered_customer' => (bool)$customer_id,
-            'is_returning_customer' => $this->is_returning_customer($customer_id, $order->get_billing_email()),
+            'customer_id' => $customer_id ? (int) $customer_id : null,
+            'customer_type' => (string) ($customer_id ? 'registered' : 'guest'),
+            'is_registered_customer' => (bool) $customer_id,
+            'is_returning_customer' => (bool) $this->is_returning_customer($customer_id, $order->get_billing_email()),
             
             // Billing Details
-            'billing_first_name' => $order->get_billing_first_name(),
-            'billing_last_name' => $order->get_billing_last_name(),
-            'billing_company' => $order->get_billing_company(),
-            'billing_email' => $order->get_billing_email(),
-            'billing_phone' => $order->get_billing_phone(),
-            'billing_country' => $billing_country_name,
-            'billing_country_code' => $billing_country_code,
-            'billing_state' => $billing_state_name,
-            'billing_state_code' => $billing_state_code,
-            'billing_city' => $order->get_billing_city(),
-            'billing_postcode' => $order->get_billing_postcode(),
+            'billing_first_name' => (string) $order->get_billing_first_name(),
+            'billing_last_name' => (string) $order->get_billing_last_name(),
+            'billing_company' => (string) $order->get_billing_company(),
+            'billing_email' => (string) $order->get_billing_email(),
+            'billing_phone' => (string) $order->get_billing_phone(),
+            'billing_country' => (string) $billing_country_name,
+            'billing_country_code' => (string) $billing_country_code,
+            'billing_state' => (string) $billing_state_name,
+            'billing_state_code' => (string) $billing_state_code,
+            'billing_city' => (string) $order->get_billing_city(),
+            'billing_postcode' => (string) $order->get_billing_postcode(),
             
             // Shipping Details
-            'shipping_first_name' => $order->get_shipping_first_name() ?: $order->get_billing_first_name(),
-            'shipping_last_name' => $order->get_shipping_last_name() ?: $order->get_billing_last_name(),
-            'shipping_company' => $order->get_shipping_company() ?: $order->get_billing_company(),
-            'shipping_country' => $shipping_country_name,
-            'shipping_country_code' => $shipping_country_code,
-            'shipping_state' => $shipping_state_name,
-            'shipping_state_code' => $shipping_state_code,
-            'shipping_city' => $order->get_shipping_city() ?: $order->get_billing_city(),
-            'shipping_postcode' => $order->get_shipping_postcode() ?: $order->get_billing_postcode(),
-            'shipping_same_as_billing' => empty($order->get_shipping_country()),
+            'shipping_first_name' => (string) ($order->get_shipping_first_name() ?: $order->get_billing_first_name()),
+            'shipping_last_name' => (string) ($order->get_shipping_last_name() ?: $order->get_billing_last_name()),
+            'shipping_company' => (string) ($order->get_shipping_company() ?: $order->get_billing_company()),
+            'shipping_country' => (string) $shipping_country_name,
+            'shipping_country_code' => (string) $shipping_country_code,
+            'shipping_state' => (string) $shipping_state_name,
+            'shipping_state_code' => (string) $shipping_state_code,
+            'shipping_city' => (string) ($order->get_shipping_city() ?: $order->get_billing_city()),
+            'shipping_postcode' => (string) ($order->get_shipping_postcode() ?: $order->get_billing_postcode()),
+            'shipping_same_as_billing' => (bool) empty($order->get_shipping_country()),
             
             // Items Information
-            'items_count' => $order->get_item_count(),
+            'items_count' => (int) $order->get_item_count(),
             'items' => $items,
             
             // Additional Details
-            'customer_note' => $order->get_customer_note(),
-            'order_status' => $order->get_status(),
-            'coupon_codes' => $order->get_coupon_codes(),
+            'customer_note' => (string) $order->get_customer_note(),
+            'order_status' => (string) $order->get_status(),
+            'coupon_codes' => array_map('strval', $order->get_coupon_codes()),
+            'timestamp' => current_time('mysql')
         );
-
+    
         $this->send_event('order_submitted', $event_attributes);
     }
 
