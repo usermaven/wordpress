@@ -703,22 +703,22 @@ class Usermaven_WooCommerce {
     public function track_order_status_changed($order_id, $old_status, $new_status, $order) {
         // Track only significant status changes
         $significant_statuses = ['processing', 'completed', 'failed', 'refunded'];
-        
         if (!in_array($new_status, $significant_statuses)) {
             return;
         }
-
+    
         $event_attributes = array(
-            'order_id' => $order_id,
-            'old_status' => $old_status,
-            'new_status' => $new_status,
-            'total' => $order->get_total(),
-            'currency' => $order->get_currency(),
-            'payment_method' => $order->get_payment_method(),
-            'customer_id' => $order->get_customer_id(),
-            'billing_email' => $order->get_billing_email()
+            'order_id' => (int) $order_id,
+            'old_status' => (string) $old_status,
+            'new_status' => (string) $new_status,
+            'total' => (float) $order->get_total(),
+            'currency' => (string) $order->get_currency(),
+            'payment_method' => (string) $order->get_payment_method(),
+            'customer_id' => $order->get_customer_id() ? (int) $order->get_customer_id() : null,
+            'billing_email' => (string) $order->get_billing_email(),
+            'timestamp' => (string) current_time('mysql')
         );
-
+    
         $this->send_event('order_status_changed', $event_attributes);
     }
 
@@ -961,17 +961,18 @@ class Usermaven_WooCommerce {
         if (!$order) {
             return;
         }
-
+    
         $event_attributes = array(
-            'order_id' => $order_id,
-            'total' => $order->get_total(),
-            'currency' => $order->get_currency(),
-            'payment_method' => $order->get_payment_method(),
-            'status' => $order->get_status(),
-            'items_count' => $order->get_item_count(),
-            'billing_email' => $order->get_billing_email()
+            'order_id' => (int) $order_id,
+            'total' => (float) $order->get_total(),
+            'currency' => (string) $order->get_currency(),
+            'payment_method' => (string) $order->get_payment_method(),
+            'status' => (string) $order->get_status(),
+            'items_count' => (int) $order->get_item_count(),
+            'billing_email' => (string) $order->get_billing_email(),
+            'timestamp' => (string) current_time('mysql')
         );
-
+    
         $this->send_event('order_thankyou_page_view', $event_attributes);
     }
 
