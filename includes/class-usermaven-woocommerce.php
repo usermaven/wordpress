@@ -60,6 +60,17 @@ class Usermaven_WooCommerce {
         // Reset the tracking flag when an order fails
         add_action('woocommerce_order_status_failed', array($this, 'reset_initiate_checkout_tracking'));
 
+
+        // Initialize cart abandonment tracking
+        $this->init_cart_abandonment_tracking();
+
+        // Add session cleanup on successful order
+        add_action('woocommerce_checkout_order_processed', function() {
+            // Clear abandonment tracking when order is completed
+            WC()->session->set('checkout_started', false);
+            WC()->session->set('last_activity', null);
+        });
+
         // Wishlist Integration (if using WooCommerce Wishlist)
         if (class_exists('YITH_WCWL')) {
             add_action('yith_wcwl_added_to_wishlist', array($this, 'track_add_to_wishlist'), 10, 3);
@@ -2378,6 +2389,159 @@ class Usermaven_WooCommerce {
         } catch (Exception $e) {
             error_log('Usermaven: Error getting product categories - ' . $e->getMessage());
             return array();
+        }
+    }
+
+
+    /**
+     * Track cart abandonment
+     */
+    public function track_cart_abandonment() {
+        // Check if cart is empty
+        if (WC()->cart->is_empty()) {
+            return;
+        }
+
+        // Get cart data
+        $cart = WC()->cart;
+        $items = array();
+
+        foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
+            $product = $cart_item['data'];
+            if (!($product instanceof WC_Product)) {
+                continue;
+            }
+
+            // Get product categories
+            $categories = array();
+            $terms = get_the_terms($product->get_id(), 'product_cat');
+            if ($terms && !is_wp_error($terms)) {
+                $categories = wp_list_pluck($terms, 'name');
+            }
+
+            $items[] = array(
+                'product_id' => (int) $product->get_id(),
+                'product_name' => (string) $product->get_name(),
+                'quantity' => (int) $cart_item['quantity'],
+                'price' => (float) $product->get_price(),
+                'line_total' => (float) $cart->get_product_subtotal($product, $cart_item['quantity']),
+                'sku' => (string) $product->get_sku(),
+                'categories' => array_map('strval', $categories),
+                'variation_id' => isset($cart_item['variation_id']) ? (int) $cart_item['variation_id'] : null,
+                'variation_attributes' => isset($cart_item['variation']) ? $cart_item['variation'] : array()
+            );
+        }
+
+        // Get applied coupons
+        $applied_coupons = array();
+        foreach ($cart->get_applied_coupons() as $coupon_code) {
+            $coupon = new WC_Coupon($coupon_code);
+            $applied_coupons[] = array(
+                'code' => (string) $coupon_code,
+                'discount_type' => (string) $coupon->get_discount_type(),
+                'amount' => (float) $coupon->get_amount()
+            );
+        }
+
+        $event_attributes = array(
+            // Cart Information
+            'cart_total' => (float) $cart->get_cart_contents_total(),
+            'cart_subtotal' => (float) $cart->get_subtotal(),
+            'cart_tax' => (float) $cart->get_cart_tax(),
+            'cart_discount' => (float) $cart->get_discount_total(),
+            'cart_shipping_total' => (float) $cart->get_shipping_total(),
+            'currency' => (string) get_woocommerce_currency(),
+            
+            // Cart Contents
+            'items_count' => (int) $cart->get_cart_contents_count(),
+            'unique_items' => (int) count($cart->get_cart()),
+            'items' => $items,
+            'applied_coupons' => $applied_coupons,
+            
+            // Customer Information
+            'customer_id' => is_user_logged_in() ? (int) get_current_user_id() : null,
+            'customer_type' => (string) (is_user_logged_in() ? 'registered' : 'guest'),
+            'customer_email' => (string) (is_user_logged_in() ? wp_get_current_user()->user_email : ''),
+            
+            // Session Information
+            'session_id' => (string) WC()->session->get_customer_id(),
+            'session_start' => (string) WC()->session->get('session_start'),
+            'session_expiry' => (string) WC()->session->get('session_expiry'),
+            'cart_created_at' => (string) $cart->get_cart_hash(),
+            'time_spent' => (int) (time() - WC()->session->get('session_start')),
+            
+            // Abandonment Context
+            'abandonment_time' => (string) current_time('mysql'),
+            'last_activity' => (string) WC()->session->get('last_activity'),
+            'checkout_started' => (bool) WC()->session->get('checkout_started'),
+            'shipping_method_selected' => (bool) !empty(WC()->session->get('chosen_shipping_methods')),
+            'payment_method_selected' => (bool) !empty(WC()->session->get('chosen_payment_method')),
+            
+            // Source Information
+            'referrer' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
+            'landing_page' => (string) WC()->session->get('landing_page'),
+            'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
+            'user_agent' => (string) (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''),
+            
+            // Additional Context
+            'timestamp' => (string) current_time('mysql')
+        );
+
+        $this->send_event('cart_abandoned', $event_attributes);
+    }
+
+    /**
+     * Initialize cart abandonment tracking
+     */
+    private function init_cart_abandonment_tracking() {
+        // Set session start time if not set
+        if (!WC()->session->get('session_start')) {
+            WC()->session->set('session_start', time());
+        }
+
+        // Set landing page if not set
+        if (!WC()->session->get('landing_page')) {
+            WC()->session->set('landing_page', $_SERVER['REQUEST_URI']);
+        }
+
+        // Update last activity time
+        WC()->session->set('last_activity', time());
+
+        // Track checkout initiation
+        add_action('woocommerce_before_checkout_form', function() {
+            WC()->session->set('checkout_started', true);
+        });
+
+        // Track cart abandonment on these events
+        add_action('wp_logout', array($this, 'track_cart_abandonment'));
+        add_action('wp_login', array($this, 'track_cart_abandonment'));
+        add_action('shutdown', array($this, 'check_cart_abandonment'));
+    }
+
+    /**
+     * Check for cart abandonment conditions on shutdown
+     */
+    public function check_cart_abandonment() {
+        // Only proceed if we have a cart and session
+        if (!WC()->cart || !WC()->session) {
+            return;
+        }
+
+        // If cart is empty, return
+        if (WC()->cart->is_empty()) {
+            return;
+        }
+
+        // Get last activity time
+        $last_activity = WC()->session->get('last_activity');
+        if (!$last_activity) {
+            return;
+        }
+
+        // Check if cart has been inactive for more than 30 minutes
+        $abandonment_threshold = 30 * 60; // 30 minutes in seconds
+        if ((time() - $last_activity) >= $abandonment_threshold) {
+            $this->track_cart_abandonment();
         }
     }
 
