@@ -62,7 +62,9 @@ class Usermaven_WooCommerce {
 
 
         // Initialize cart abandonment tracking
-        $this->init_cart_abandonment_tracking();
+        add_action('woocommerce_init', function() {
+            $this->init_cart_abandonment_tracking();
+        });
 
         // Add session cleanup on successful order
         add_action('woocommerce_checkout_order_processed', function() {
@@ -2307,27 +2309,206 @@ class Usermaven_WooCommerce {
 
     /**
      * Track refunded orders
+     * 
+     * @param int|WC_Order $order_id The WooCommerce order ID or order object
+     * @param int|WC_Order $refund_id The WooCommerce refund ID or refund object
      */
     public function track_order_refunded($order_id, $refund_id) {
-        $order = wc_get_order($order_id);
-        $refund = wc_get_order($refund_id);
+        // Handle cases where order/refund objects are passed directly
+        if (is_object($order_id)) {
+            $order = $order_id;
+            $order_id = $order->get_id();
+        } else {
+            $order = wc_get_order($order_id);
+        }
+
+        if (is_object($refund_id)) {
+            $refund = $refund_id;
+            $refund_id = $refund->get_id();
+        } else {
+            $refund = wc_get_order($refund_id);
+        }
 
         if (!$order || !$refund) {
             return;
         }
 
+        // Get WC Countries object for location handling
+        $wc_countries = new WC_Countries();
+
+        // Get billing country details
+        $billing_country_code = $order->get_billing_country();
+        $billing_country_name = $billing_country_code && isset($wc_countries->countries[$billing_country_code]) ? 
+            $wc_countries->countries[$billing_country_code] : '';
+
+        // Get billing state details
+        $billing_state_code = $order->get_billing_state();
+        $billing_states = $wc_countries->get_states($billing_country_code);
+        $billing_state_name = ($billing_states && isset($billing_states[$billing_state_code])) 
+            ? $billing_states[$billing_state_code] 
+            : '';
+
+        // Get shipping country details
+        $shipping_country_code = $order->get_shipping_country();
+        
+        // If shipping country is empty, use billing country
+        if (empty($shipping_country_code)) {
+            $shipping_country_code = $billing_country_code;
+            $shipping_country_name = $billing_country_name;
+        } else {
+            $shipping_country_name = isset($wc_countries->countries[$shipping_country_code]) ? 
+                $wc_countries->countries[$shipping_country_code] : '';
+        }
+
+        // Get shipping state details
+        $shipping_state_code = $order->get_shipping_state();
+        
+        // If shipping state is empty, use billing state
+        if (empty($shipping_state_code)) {
+            $shipping_state_code = $billing_state_code;
+            $shipping_state_name = $billing_state_name;
+        } else {
+            $shipping_states = $wc_countries->get_states($shipping_country_code);
+            $shipping_state_name = ($shipping_states && isset($shipping_states[$shipping_state_code])) 
+                ? $shipping_states[$shipping_state_code] 
+                : '';
+        }
+
+        // Get refunded items details
+        $refunded_items = array();
+        foreach ($refund->get_items() as $item_id => $item) {
+            $product = $item->get_product();
+            if (!$product) {
+                continue;
+            }
+
+            // Get parent product if variation
+            $parent_product = $product;
+            $variation_id = $item->get_variation_id();
+            if ($variation_id) {
+                $parent_product = wc_get_product($product->get_parent_id());
+                if (!$parent_product) {
+                    continue;
+                }
+            }
+
+            // Get product categories
+            $categories = array();
+            $terms = get_the_terms($parent_product->get_id(), 'product_cat');
+            if ($terms && !is_wp_error($terms)) {
+                $categories = wp_list_pluck($terms, 'name');
+            }
+
+            // Process variation attributes
+            $variation_attributes = array();
+            if ($variation_id) {
+                $item_data = $item->get_meta_data();
+                foreach ($item_data as $meta) {
+                    if (strpos($meta->key, 'pa_') === 0) {
+                        $variation_attributes['attribute_' . $meta->key] = (string) $meta->value;
+                    }
+                }
+            }
+
+            $refunded_items[] = array(
+                'product_id' => (int) $parent_product->get_id(),
+                'product_name' => (string) $parent_product->get_name(),
+                'quantity' => (int) abs($item->get_quantity()),
+                'refund_total' => (float) abs($item->get_total()),
+                'refund_tax' => (float) abs($item->get_total_tax()),
+                'sku' => (string) $product->get_sku(),
+                'categories' => array_map('strval', $categories),
+                'variation_id' => $variation_id ? (int) $variation_id : null,
+                'variation_attributes' => $variation_attributes
+            );
+        }
+
+        // Get shipping methods from original order
+        $shipping_methods = array();
+        foreach ($order->get_shipping_methods() as $shipping_method) {
+            $shipping_methods[] = array(
+                'method_id' => (string) $shipping_method->get_method_id(),
+                'method_title' => (string) $shipping_method->get_method_title(),
+                'total' => (float) $shipping_method->get_total(),
+                'total_tax' => (float) $shipping_method->get_total_tax()
+            );
+        }
+
         $event_attributes = array(
-            'order_id' => $order_id,
-            'refund_id' => $refund_id,
-            'refund_amount' => $refund->get_amount(),
-            'refund_reason' => $refund->get_reason(),
-            'original_order_total' => $order->get_total(),
-            'remaining_order_total' => $order->get_remaining_refund_amount(),
-            'currency' => $order->get_currency(),
-            'customer_id' => $order->get_customer_id(),
-            'billing_email' => $order->get_billing_email(),
-            'payment_method' => $order->get_payment_method(),
-            'refunded_items' => $this->get_refunded_items($refund)
+            // Order Information
+            'order_id' => (int) $order_id,
+            'refund_id' => (int) $refund_id,
+            'order_currency' => (string) $order->get_currency(),
+            'created_via' => (string) $order->get_created_via(),
+            'order_version' => (string) $order->get_version(),
+            'order_key' => (string) $order->get_order_key(),
+            'order_number' => (string) $order->get_order_number(),
+            'order_status' => (string) $order->get_status(),
+            
+            // Refund Details
+            'refund_amount' => (float) abs($refund->get_total()),
+            'refund_reason' => (string) get_post_meta($refund_id, '_refund_reason', true),
+            'refund_date' => (string) $refund->get_date_created()->format('Y-m-d H:i:s'),
+            'refund_author' => (int) get_post_meta($refund_id, '_refunded_by', true),
+            'is_partial_refund' => (bool) (abs($refund->get_total()) < $order->get_total()),
+            
+            // Financial Details
+            'original_order_total' => (float) $order->get_total(),
+            'remaining_order_total' => (float) $order->get_remaining_refund_amount(),
+            'refunded_tax' => (float) abs($refund->get_total_tax()),
+            'refunded_shipping' => (float) abs($refund->get_shipping_total()),
+            
+            // Payment Details
+            'payment_method' => (string) $order->get_payment_method(),
+            'payment_method_title' => (string) $order->get_payment_method_title(),
+            'transaction_id' => (string) $order->get_transaction_id(),
+            'date_paid' => $order->get_date_paid() ? (string) $order->get_date_paid()->format('Y-m-d H:i:s') : null,
+            
+            // Order Contents
+            'refunded_items_count' => (int) count($refunded_items),
+            'refunded_items' => $refunded_items,
+            'shipping_methods' => $shipping_methods,
+            
+            // Customer Information
+            'customer_id' => $order->get_customer_id() ? (int) $order->get_customer_id() : null,
+            'customer_type' => (string) ($order->get_customer_id() ? 'registered' : 'guest'),
+            'is_registered_customer' => (bool) $order->get_customer_id(),
+            'customer_ip_address' => (string) $order->get_customer_ip_address(),
+            'customer_user_agent' => (string) $order->get_customer_user_agent(),
+            'customer_note' => (string) $order->get_customer_note(),
+            
+            // Billing Details
+            'billing_email' => (string) $order->get_billing_email(),
+            'billing_phone' => (string) $order->get_billing_phone(),
+            'billing_first_name' => (string) $order->get_billing_first_name(),
+            'billing_last_name' => (string) $order->get_billing_last_name(),
+            'billing_company' => (string) $order->get_billing_company(),
+            'billing_address_1' => (string) $order->get_billing_address_1(),
+            'billing_address_2' => (string) $order->get_billing_address_2(),
+            'billing_city' => (string) $order->get_billing_city(),
+            'billing_state' => (string) $billing_state_name,
+            'billing_state_code' => (string) $billing_state_code,
+            'billing_postcode' => (string) $order->get_billing_postcode(),
+            'billing_country' => (string) $billing_country_name,
+            'billing_country_code' => (string) $billing_country_code,
+            
+            // Shipping Details
+            'shipping_first_name' => (string) ($order->get_shipping_first_name() ?: $order->get_billing_first_name()),
+            'shipping_last_name' => (string) ($order->get_shipping_last_name() ?: $order->get_billing_last_name()),
+            'shipping_company' => (string) ($order->get_shipping_company() ?: $order->get_billing_company()),
+            'shipping_address_1' => (string) $order->get_shipping_address_1(),
+            'shipping_address_2' => (string) $order->get_shipping_address_2(),
+            'shipping_city' => (string) ($order->get_shipping_city() ?: $order->get_billing_city()),
+            'shipping_state' => (string) $shipping_state_name,
+            'shipping_state_code' => (string) $shipping_state_code,
+            'shipping_postcode' => (string) ($order->get_shipping_postcode() ?: $order->get_billing_postcode()),
+            'shipping_country' => (string) $shipping_country_name,
+            'shipping_country_code' => (string) $shipping_country_code,
+            'shipping_same_as_billing' => (bool) empty($order->get_shipping_country()),
+            
+            // Additional Context
+            'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
+            'timestamp' => (string) current_time('mysql')
         );
 
         $this->send_event('order_refunded', $event_attributes);
@@ -2494,24 +2675,29 @@ class Usermaven_WooCommerce {
      * Initialize cart abandonment tracking
      */
     private function init_cart_abandonment_tracking() {
+        // Safety check for WooCommerce
+        if (!function_exists('WC') || !WC() || !WC()->session) {
+            return;
+        }
+    
         // Set session start time if not set
         if (!WC()->session->get('session_start')) {
             WC()->session->set('session_start', time());
         }
-
+    
         // Set landing page if not set
         if (!WC()->session->get('landing_page')) {
             WC()->session->set('landing_page', $_SERVER['REQUEST_URI']);
         }
-
+    
         // Update last activity time
         WC()->session->set('last_activity', time());
-
+    
         // Track checkout initiation
         add_action('woocommerce_before_checkout_form', function() {
             WC()->session->set('checkout_started', true);
         });
-
+    
         // Track cart abandonment on these events
         add_action('wp_logout', array($this, 'track_cart_abandonment'));
         add_action('wp_login', array($this, 'track_cart_abandonment'));
@@ -2522,22 +2708,27 @@ class Usermaven_WooCommerce {
      * Check for cart abandonment conditions on shutdown
      */
     public function check_cart_abandonment() {
-        // Only proceed if we have a cart and session
+        // Only proceed if WooCommerce is loaded and initialized
+        if (!function_exists('WC') || !WC()) {
+            return;
+        }
+    
+        // Check if cart and session are available
         if (!WC()->cart || !WC()->session) {
             return;
         }
-
+    
         // If cart is empty, return
         if (WC()->cart->is_empty()) {
             return;
         }
-
+    
         // Get last activity time
         $last_activity = WC()->session->get('last_activity');
         if (!$last_activity) {
             return;
         }
-
+    
         // Check if cart has been inactive for more than 30 minutes
         $abandonment_threshold = 30 * 60; // 30 minutes in seconds
         if ((time() - $last_activity) >= $abandonment_threshold) {
