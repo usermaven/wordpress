@@ -1270,51 +1270,14 @@ class Usermaven_WooCommerce {
             return;
         }
 
-        // Get WC Countries object for location handling
-        $wc_countries = new WC_Countries();
-
-        // Get billing country details
-        $billing_country_code = $order->get_billing_country();
-        $billing_country_name = $billing_country_code && isset($wc_countries->countries[$billing_country_code]) ? 
-            $wc_countries->countries[$billing_country_code] : '';
-
-        // Get billing state details
-        $billing_state_code = $order->get_billing_state();
-        $billing_states = $wc_countries->get_states($billing_country_code);
-        $billing_state_name = ($billing_states && isset($billing_states[$billing_state_code])) 
-            ? $billing_states[$billing_state_code] 
-            : '';
-
-        // Get shipping country details
-        $shipping_country_code = $order->get_shipping_country();
+        $location_details = $this->get_location_details($order);
+        $shipping_methods = $this->get_shipping_methods($order);
         
-        // If shipping country is empty, use billing country
-        if (empty($shipping_country_code)) {
-            $shipping_country_code = $billing_country_code;
-            $shipping_country_name = $billing_country_name;
-        } else {
-            $shipping_country_name = isset($wc_countries->countries[$shipping_country_code]) ? 
-                $wc_countries->countries[$shipping_country_code] : '';
-        }
-
-        // Get shipping state details
-        $shipping_state_code = $order->get_shipping_state();
-        
-        // If shipping state is empty, use billing state
-        if (empty($shipping_state_code)) {
-            $shipping_state_code = $billing_state_code;
-            $shipping_state_name = $billing_state_name;
-        } else {
-            $shipping_states = $wc_countries->get_states($shipping_country_code);
-            $shipping_state_name = ($shipping_states && isset($shipping_states[$shipping_state_code])) 
-                ? $shipping_states[$shipping_state_code] 
-                : '';
-        }
-
         // Get refunded items details
         $refunded_items = array();
-        foreach ($refund->get_items() as $item_id => $item) {
-            $product = $item->get_product();
+        foreach ($refund->get_items() as $item) {
+            $product_data = $item->get_data();
+            $product = wc_get_product($product_data['product_id']);
             if (!$product) {
                 continue;
             }
@@ -1323,8 +1286,9 @@ class Usermaven_WooCommerce {
             $parent_product = $product;
             $variation_id = $item->get_variation_id();
             if ($variation_id) {
-                $parent_product = wc_get_product($product->get_parent_id());
-                if (!$parent_product) {
+                $parent_product = wc_get_product($product->get_id());
+                $product = wc_get_product($variation_id);
+                if (!$parent_product || !$product) {
                     continue;
                 }
             }
@@ -1360,92 +1324,40 @@ class Usermaven_WooCommerce {
             );
         }
 
-        // Get shipping methods from original order
-        $shipping_methods = array();
-        foreach ($order->get_shipping_methods() as $shipping_method) {
-            $shipping_methods[] = array(
-                'method_id' => (string) $shipping_method->get_method_id(),
-                'method_title' => (string) $shipping_method->get_method_title(),
-                'total' => (float) $shipping_method->get_total(),
-                'total_tax' => (float) $shipping_method->get_total_tax()
-            );
-        }
+        // Merge common order attributes with refund-specific attributes
+        $event_attributes = array_merge(
+            $this->get_common_order_attributes($order, $location_details),
+            array(
+                // Refund Information
+                'refund_id' => (int) $refund_id,
+                
+                // Refund Details
+                'refund_amount' => (float) abs($refund->get_total()),
+                'refund_reason' => (string) get_post_meta($refund_id, '_refund_reason', true),
+                'refund_date' => (string) $refund->get_date_created()->format('Y-m-d H:i:s'),
+                'refund_author' => (int) get_post_meta($refund_id, '_refunded_by', true),
+                'is_partial_refund' => (bool) (abs($refund->get_total()) < $order->get_total()),
+                
+                // Financial Details
+                'original_order_total' => (float) $order->get_total(),
+                'remaining_order_total' => (float) $order->get_remaining_refund_amount(),
+                'refunded_tax' => (float) abs($refund->get_total_tax()),
+                'refunded_shipping' => (float) abs($refund->get_shipping_total()),
+                
+                // Order Contents
+                'refunded_items_count' => (int) count($refunded_items),
+                'refunded_items' => $refunded_items,
+                'shipping_methods' => $shipping_methods,
 
-        $event_attributes = array(
-            // Order Information
-            'order_id' => (int) $order_id,
-            'refund_id' => (int) $refund_id,
-            'order_currency' => (string) $order->get_currency(),
-            'created_via' => (string) $order->get_created_via(),
-            'order_version' => (string) $order->get_version(),
-            'order_key' => (string) $order->get_order_key(),
-            'order_number' => (string) $order->get_order_number(),
-            'order_status' => (string) $order->get_status(),
-            
-            // Refund Details
-            'refund_amount' => (float) abs($refund->get_total()),
-            'refund_reason' => (string) get_post_meta($refund_id, '_refund_reason', true),
-            'refund_date' => (string) $refund->get_date_created()->format('Y-m-d H:i:s'),
-            'refund_author' => (int) get_post_meta($refund_id, '_refunded_by', true),
-            'is_partial_refund' => (bool) (abs($refund->get_total()) < $order->get_total()),
-            
-            // Financial Details
-            'original_order_total' => (float) $order->get_total(),
-            'remaining_order_total' => (float) $order->get_remaining_refund_amount(),
-            'refunded_tax' => (float) abs($refund->get_total_tax()),
-            'refunded_shipping' => (float) abs($refund->get_shipping_total()),
-            
-            // Payment Details
-            'payment_method' => (string) $order->get_payment_method(),
-            'payment_method_title' => (string) $order->get_payment_method_title(),
-            'transaction_id' => (string) $order->get_transaction_id(),
-            'date_paid' => $order->get_date_paid() ? (string) $order->get_date_paid()->format('Y-m-d H:i:s') : null,
-            
-            // Order Contents
-            'refunded_items_count' => (int) count($refunded_items),
-            'refunded_items' => $refunded_items,
-            'shipping_methods' => $shipping_methods,
-            
-            // Customer Information
-            'customer_id' => $order->get_customer_id() ? (int) $order->get_customer_id() : null,
-            'customer_type' => (string) ($order->get_customer_id() ? 'registered' : 'guest'),
-            'is_registered_customer' => (bool) $order->get_customer_id(),
-            'customer_ip_address' => (string) $order->get_customer_ip_address(),
-            'customer_user_agent' => (string) $order->get_customer_user_agent(),
-            'customer_note' => (string) $order->get_customer_note(),
-            
-            // Billing Details
-            'billing_email' => (string) $order->get_billing_email(),
-            'billing_phone' => (string) $order->get_billing_phone(),
-            'billing_first_name' => (string) $order->get_billing_first_name(),
-            'billing_last_name' => (string) $order->get_billing_last_name(),
-            'billing_company' => (string) $order->get_billing_company(),
-            'billing_address_1' => (string) $order->get_billing_address_1(),
-            'billing_address_2' => (string) $order->get_billing_address_2(),
-            'billing_city' => (string) $order->get_billing_city(),
-            'billing_state' => (string) $billing_state_name,
-            'billing_state_code' => (string) $billing_state_code,
-            'billing_postcode' => (string) $order->get_billing_postcode(),
-            'billing_country' => (string) $billing_country_name,
-            'billing_country_code' => (string) $billing_country_code,
-            
-            // Shipping Details
-            'shipping_first_name' => (string) ($order->get_shipping_first_name() ?: $order->get_billing_first_name()),
-            'shipping_last_name' => (string) ($order->get_shipping_last_name() ?: $order->get_billing_last_name()),
-            'shipping_company' => (string) ($order->get_shipping_company() ?: $order->get_billing_company()),
-            'shipping_address_1' => (string) $order->get_shipping_address_1(),
-            'shipping_address_2' => (string) $order->get_shipping_address_2(),
-            'shipping_city' => (string) ($order->get_shipping_city() ?: $order->get_billing_city()),
-            'shipping_state' => (string) $shipping_state_name,
-            'shipping_state_code' => (string) $shipping_state_code,
-            'shipping_postcode' => (string) ($order->get_shipping_postcode() ?: $order->get_billing_postcode()),
-            'shipping_country' => (string) $shipping_country_name,
-            'shipping_country_code' => (string) $shipping_country_code,
-            'shipping_same_as_billing' => (bool) empty($order->get_shipping_country()),
-            
-            // Additional Context
-            'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
-            'timestamp' => (string) current_time('mysql')
+                // Customer Information
+                'customer_ip_address' => (string) $order->get_customer_ip_address(),
+                'customer_user_agent' => (string) $order->get_customer_user_agent(),
+                'customer_note' => (string) $order->get_customer_note(),
+                
+                // Additional Context
+                'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
+                'timestamp' => (string) current_time('mysql')
+            )
         );
 
         $this->send_event('order_refunded', $event_attributes);
@@ -1466,25 +1378,6 @@ class Usermaven_WooCommerce {
         );
 
         $this->send_event('customer_created', $event_attributes);
-    }
-
-    /**
-     * Helper function to get refunded items
-     */
-    private function get_refunded_items($refund) {
-        $refunded_items = array();
-        foreach ($refund->get_items() as $item_id => $item) {
-            $refunded_items[] = array(
-                'product_id' => $item->get_product_id(),
-                'variation_id' => $item->get_variation_id(),
-                'quantity' => abs($item->get_quantity()),
-                'subtotal' => abs($item->get_subtotal()),
-                'total' => abs($item->get_total()),
-                'tax' => abs($item->get_total_tax()),
-                'name' => $item->get_name()
-            );
-        }
-        return $refunded_items;
     }
 
     /**
