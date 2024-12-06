@@ -1591,7 +1591,7 @@ class Usermaven_WooCommerce {
         }
 
         $current_time = time();
-        $inactivity_threshold = 120; // 30 minutes in seconds
+        $inactivity_threshold = 1800; // 30 minutes in seconds
 
         // If it's been more than 30 minutes since last activity, track abandonment
         if (($current_time - $last_activity) > $inactivity_threshold) {
