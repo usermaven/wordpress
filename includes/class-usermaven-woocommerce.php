@@ -18,6 +18,12 @@ class Usermaven_WooCommerce {
         $this->api = new Usermaven_API($tracking_host);
         $this->api_key = get_option('usermaven_api_key');
         $this->init_hooks();
+
+        // Initialize cart abandonment tracking after WooCommerce is fully initialized
+        add_action('woocommerce_init', array($this, 'init_cart_abandonment_tracking'));
+
+        // Check cart abandonment on shutdown
+        add_action('shutdown', array($this, 'check_cart_abandonment'), 20);
     }
 
     /**
@@ -51,13 +57,10 @@ class Usermaven_WooCommerce {
         // Track customer creation
         add_action('woocommerce_created_customer', array($this, 'track_customer_created'), 10, 3);
 
-        // Reset the tracking flag when the cart is updated
+        // Reset the tracking flag when the cart is updated or order completes/fails
         add_action('woocommerce_cart_updated', array($this, 'reset_initiate_checkout_tracking'));
-        // Reset the tracking flag after the order is placed
         add_action('woocommerce_thankyou', array($this, 'reset_initiate_checkout_tracking'));
-        // Reset the tracking flag when an order is completed
         add_action('woocommerce_order_status_completed', array($this, 'reset_initiate_checkout_tracking'));
-        // Reset the tracking flag when an order fails
         add_action('woocommerce_order_status_failed', array($this, 'reset_initiate_checkout_tracking'));
 
 
@@ -1403,29 +1406,39 @@ class Usermaven_WooCommerce {
         }
     }
 
-
     /**
-     * Track cart abandonment
+     * Schedule cart abandonment check
+     */
+    public function schedule_cart_abandonment_check() {
+        if (!wp_next_scheduled('usermaven_check_cart_abandonment')) {
+            wp_schedule_event(time(), 'hourly', 'usermaven_check_cart_abandonment');
+        }
+    }
+
+
+     /**
+     * Track cart abandonment event
      */
     public function track_cart_abandonment() {
-        // Check if cart is empty
-        if (WC()->cart->is_empty()) {
+        $cart = WC()->cart;
+        if (!$cart || $cart->is_empty()) {
             return;
         }
 
-        // Get cart data
-        $cart = WC()->cart;
         $items = array();
-
         foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
             $product = $cart_item['data'];
             if (!($product instanceof WC_Product)) {
                 continue;
             }
 
-            // Get product categories
+            $parent_product = $product;
+            if ($product instanceof WC_Product_Variation) {
+                $parent_product = wc_get_product($product->get_parent_id());
+            }
+
             $categories = array();
-            $terms = get_the_terms($product->get_id(), 'product_cat');
+            $terms = get_the_terms($parent_product->get_id(), 'product_cat');
             if ($terms && !is_wp_error($terms)) {
                 $categories = wp_list_pluck($terms, 'name');
             }
@@ -1477,19 +1490,15 @@ class Usermaven_WooCommerce {
             // Session Information
             'session_id' => (string) WC()->session->get_customer_id(),
             'session_start' => (string) WC()->session->get('session_start'),
-            'session_expiry' => (string) WC()->session->get('session_expiry'),
-            'cart_created_at' => (string) $cart->get_cart_hash(),
-            'time_spent' => (int) (time() - WC()->session->get('session_start')),
+            'cart_hash' => (string) $cart->get_cart_hash(),
+            'time_spent' => WC()->session->get('session_start') ? (int) (time() - WC()->session->get('session_start')) : null,
             
             // Abandonment Context
             'abandonment_time' => (string) current_time('mysql'),
             'last_activity' => (string) WC()->session->get('last_activity'),
             'checkout_started' => (bool) WC()->session->get('checkout_started'),
-            'shipping_method_selected' => (bool) !empty(WC()->session->get('chosen_shipping_methods')),
-            'payment_method_selected' => (bool) !empty(WC()->session->get('chosen_payment_method')),
             
             // Source Information
-            'referrer' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
             'landing_page' => (string) WC()->session->get('landing_page'),
             'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
             'user_agent' => (string) (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''),
@@ -1499,69 +1508,93 @@ class Usermaven_WooCommerce {
         );
 
         $this->send_event('cart_abandoned', $event_attributes);
+
+        // Update or reset last_activity to prevent repeated triggers
+        WC()->session->set('last_activity', time());
     }
 
     /**
      * Initialize cart abandonment tracking
      */
-    private function init_cart_abandonment_tracking() {
+    public function init_cart_abandonment_tracking() {
         // Safety check for WooCommerce
         if (!function_exists('WC') || !WC() || !WC()->session) {
             return;
         }
     
-        // Set session start time if not set
-        if (!WC()->session->get('session_start')) {
+         // Set session start time if not already set
+         if (!WC()->session->get('session_start')) {
             WC()->session->set('session_start', time());
         }
-    
+
         // Set landing page if not set
-        if (!WC()->session->get('landing_page')) {
+        if (!WC()->session->get('landing_page') && isset($_SERVER['REQUEST_URI'])) {
             WC()->session->set('landing_page', $_SERVER['REQUEST_URI']);
         }
     
-        // Update last activity time
-        WC()->session->set('last_activity', time());
-    
-        // Track checkout initiation
+        // Do NOT update last_activity on every page load — only when user interacts with the cart or starts checkout.
+        // This prevents continuous resets that block abandonment detection.
+
+        // Mark checkout start as activity
         add_action('woocommerce_before_checkout_form', function() {
             WC()->session->set('checkout_started', true);
+            $this->update_last_activity();
         });
-    
-        // Track cart abandonment on these events
-        add_action('wp_logout', array($this, 'track_cart_abandonment'));
-        add_action('wp_login', array($this, 'track_cart_abandonment'));
-        add_action('shutdown', array($this, 'check_cart_abandonment'));
+
+        // Update last_activity on cart actions that indicate user presence
+        add_action('woocommerce_add_to_cart', array($this, 'update_last_activity'));
+        add_action('woocommerce_cart_item_removed', array($this, 'update_last_activity'));
+        add_action('woocommerce_after_cart_item_quantity_update', array($this, 'update_last_activity'));
     }
 
     /**
-     * Check for cart abandonment conditions on shutdown
+     * Update the last activity timestamp
+     */
+    public function update_last_activity() {
+        if (WC()->session) {
+            WC()->session->set('last_activity', time());
+        }
+    }
+
+    /**
+     * Check for cart abandonment conditions on login
+     */
+    public function check_cart_abandonment_on_login($user_login, $user) {
+        $this->check_cart_abandonment();
+    }
+
+    /**
+     * Check for cart abandonment conditions on logout
+     */
+    public function track_cart_abandonment_on_logout() {
+        $this->track_cart_abandonment();
+    }
+
+    /**
+     * Check cart abandonment conditions on shutdown
      */
     public function check_cart_abandonment() {
-        // Only proceed if WooCommerce is loaded and initialized
-        if (!function_exists('WC') || !WC()) {
+        if (!function_exists('WC') || !WC()->cart || !WC()->session) {
             return;
         }
-    
-        // Check if cart and session are available
-        if (!WC()->cart || !WC()->session) {
-            return;
-        }
-    
-        // If cart is empty, return
+
+        // If cart is empty, no abandonment to track
         if (WC()->cart->is_empty()) {
             return;
         }
-    
-        // Get last activity time
+
         $last_activity = WC()->session->get('last_activity');
+
+        // If no last_activity recorded or user recently interacted, do nothing
         if (!$last_activity) {
             return;
         }
-    
-        // Check if cart has been inactive for more than 30 minutes
-        $abandonment_threshold = 30 * 60; // 30 minutes in seconds
-        if ((time() - $last_activity) >= $abandonment_threshold) {
+
+        $current_time = time();
+        $inactivity_threshold = 120; // 30 minutes in seconds
+
+        // If it's been more than 30 minutes since last activity, track abandonment
+        if (($current_time - $last_activity) > $inactivity_threshold) {
             $this->track_cart_abandonment();
         }
     }
