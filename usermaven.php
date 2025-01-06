@@ -140,8 +140,9 @@ function run_usermaven() {
     $plugin = new Usermaven($tracking_host);
     $plugin->run();
 
-    // Check if WooCommerce is active
-    if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
+    // Check if WooCommerce is active and tracking is enabled
+    if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) 
+        && get_option('usermaven_track_woocommerce', false) ) {
         new Usermaven_WooCommerce($tracking_host);
     }
 }

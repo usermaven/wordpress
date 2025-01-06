@@ -11,6 +11,7 @@ function usermaven_activation_form() {
     $cookie_less_tracking = isset( $_POST['cookie_less_tracking'] ) ? true : false;
     $identify_verification = isset( $_POST['identify_verification'] ) ? true : false;
     $embed_dashboard = isset( $_POST['embed_dashboard'] ) ? true : false;
+    $track_woocommerce = isset( $_POST['track_woocommerce'] ) ? true : false;
 
     $api_key = sanitize_text_field($_POST['api_key']);
     $server_token = isset($_POST['server_token']) ? sanitize_text_field($_POST['server_token']) : '';
@@ -63,9 +64,14 @@ function usermaven_activation_form() {
       update_option( 'usermaven_api_key', $api_key );
       update_option( 'usermaven_custom_domain', $custom_domain );
 
-      // Only update server token if it's provided
-      if (!empty($server_token)) {
-        update_option( 'usermaven_server_token', $server_token );
+      // Always update server token, even if empty
+      update_option( 'usermaven_server_token', $server_token );
+
+      // If server token is empty, disable WooCommerce tracking
+      if (empty($server_token)) {
+        update_option( 'usermaven_track_woocommerce', false );
+      } else {
+        update_option( 'usermaven_track_woocommerce', $track_woocommerce );
       }
 
       // Roles to be tracked
@@ -75,8 +81,6 @@ function usermaven_activation_form() {
         update_option( 'usermaven_role_editor', isset( $_POST['role_editor'] ) ? true : false );
         update_option( 'usermaven_role_subscriber', isset( $_POST['role_subscriber'] ) ? true : false );
         update_option( 'usermaven_role_translator', isset( $_POST['role_translator'] ) ? true : false );
-
-//       update_option( 'usermaven_server_token', $server_token);
 
      // Display a success message
      echo '<div class="notice notice-success"><p>Inputs saved successfully</p></div>';
@@ -140,6 +144,21 @@ function usermaven_activation_form() {
         <label for="autocapture">
         <input type="checkbox" name="autocapture" id="autocapture" value="true" <?php checked( get_option('usermaven_autocapture'), true ); ?>>
         Automatically capture frontend events i.e button clicks, form submission etc.</label>
+        <br>
+        <label for="track_woocommerce">
+        <input type="checkbox" name="track_woocommerce" id="track_woocommerce" value="true" 
+            <?php 
+                $server_token = get_option('usermaven_server_token');
+                checked(get_option('usermaven_track_woocommerce'), true); 
+                echo empty($server_token) ? 'disabled' : '';
+            ?>>
+        Track WooCommerce events
+        <?php if (empty($server_token)): ?>
+            <span class="tooltip-text" style="color: #d63638; font-size: 12px; display: block; margin-top: 5px;">
+                Server token is required to enable WooCommerce tracking. Please add your server token above.
+            </span>
+        <?php endif; ?>
+        </label>
         </div>
         <div class="input-block">
         <h3>Tracking identified users</h3>
