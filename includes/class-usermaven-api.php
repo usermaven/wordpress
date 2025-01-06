@@ -32,7 +32,7 @@ class Usermaven_API {
             'doc_path' => $_SERVER['REQUEST_URI'] ?? '',
             'doc_host' => $_SERVER['HTTP_HOST'] ?? '',
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            // 'source_ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'source_ip' => $_SERVER['REMOTE_ADDR'] ?? '',
             'user_language' => $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '',
             'doc_encoding' => 'UTF-8',
         ];
