@@ -83,15 +83,19 @@ function usermaven_activation_form() {
         update_option( 'usermaven_role_translator', isset( $_POST['role_translator'] ) ? true : false );
 
      // Display a success message
-     echo '<div class="notice notice-success"><p>Inputs saved successfully</p></div>';
+     $success_message = '<div class="notice-toast notice-success"><p>Settings saved successfully</p></div>';
     } else {
-      echo '<div class="notice notice-error"><p>' . $error . '</p></div>';
+      $success_message = '<div class="notice-toast notice-error"><p>' . $error . '</p></div>';
     }
-  } else {
-    // Display the form
-    wp_enqueue_style( 'usermaven-activation-form-styles', plugin_dir_url( __FILE__ ) . 'css/usermaven-settings-form.css' );
-    ?>
-      <div class="header-section">
+  }
+
+  // Display the form
+  wp_enqueue_style( 'usermaven-activation-form-styles', plugin_dir_url( __FILE__ ) . 'css/usermaven-settings-form.css' );
+  ?>
+    <?php if (isset($success_message)) : ?>
+      <?php echo $success_message; ?>
+    <?php endif; ?>
+    <div class="header-section">
         <div class="header-left">
             <img src="<?php echo esc_url(plugin_dir_url( __FILE__ ) . '../admin/icons/um-favicon-without-white-bg.svg'); ?>" alt="Company Logo" class="company-logo">
             <h1 class="header-text">Usermaven Settings</h1>
@@ -234,6 +238,76 @@ function usermaven_activation_form() {
         </div>
       </form>
       </div>
+
+      <style>
+        .notice-toast {
+          position: fixed;
+          top: 32px;
+          right: 20px;
+          padding: 16px 24px;
+          border-radius: 8px;
+          z-index: 9999;
+          min-width: 300px;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+          animation: slideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), fadeOut 0.5s ease-in-out 2.5s forwards;
+        }
+        .notice-toast p {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.4;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+        }
+        .notice-toast p::before {
+          content: '';
+          display: inline-block;
+          width: 20px;
+          height: 20px;
+          margin-right: 12px;
+          background-position: center;
+          background-repeat: no-repeat;
+          background-size: contain;
+        }
+        .notice-success {
+          background: linear-gradient(135deg, rgba(70, 180, 80, 0.95) 0%, rgba(60, 170, 70, 0.95) 100%);
+          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .notice-success p::before {
+          background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>');
+        }
+        .notice-error {
+          background: linear-gradient(135deg, rgba(220, 50, 50, 0.95) 0%, rgba(200, 40, 40, 0.95) 100%);
+          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .notice-error p::before {
+          background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>');
+        }
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%) translateY(-50%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0) translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes fadeOut {
+          from {
+            opacity: 1;
+            transform: translateX(0) translateY(0);
+          }
+          to {
+            opacity: 0;
+            transform: translateX(10px) translateY(0);
+            visibility: hidden;
+          }
+        }
+      </style>
     <?php
-  }
 }
