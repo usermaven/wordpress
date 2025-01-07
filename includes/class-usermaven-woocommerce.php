@@ -59,7 +59,7 @@ class Usermaven_WooCommerce {
 
         // Reset the tracking flag when the cart is updated or order completes/fails
         add_action('woocommerce_cart_updated', array($this, 'reset_initiate_checkout_tracking'));
-        add_action('woocommerce_thankyou', array($this, 'reset_initiate_checkout_tracking'));
+        add_action('woocommerce_thankyou', array($this, 'track_order_thankyou'), 10);
         add_action('woocommerce_order_status_completed', array($this, 'reset_initiate_checkout_tracking'));
         add_action('woocommerce_order_status_failed', array($this, 'reset_initiate_checkout_tracking'));
 
@@ -100,52 +100,56 @@ class Usermaven_WooCommerce {
             if (!is_singular('product')) {
                 return;
             }
-    
+
             // Get the product ID
             $product_id = get_the_ID();
             if (!$product_id) {
                 return;
             }
-    
+
             // Get the product
             global $product;
             if (!$product instanceof WC_Product) {
                 $product = wc_get_product($product_id);
             }
-    
+
             // Silently return if no valid product
             if (!$product instanceof WC_Product) {
                 return;
             }
-    
+
             // Get product categories
             $categories = array();
             $terms = get_the_terms($product->get_id(), 'product_cat');
             if ($terms && !is_wp_error($terms)) {
                 $categories = wp_list_pluck($terms, 'name');
             }
-    
-            // Prepare event attributes
-            $event_attributes = array(
+
+            // Create items array with single product
+            $items = array(array(
                 'product_id' => (int) $product->get_id(),
                 'product_name' => (string) $product->get_name(),
                 'price' => (float) $product->get_price(),
-                'currency' => (string) get_woocommerce_currency(),
                 'type' => (string) $product->get_type(),
                 'categories' => array_map('strval', $categories),
                 'sku' => (string) $product->get_sku(),
-                'stock_status' => (string) $product->get_stock_status(),
+                'stock_status' => (string) $product->get_stock_status()
+            ));
+
+            $event_attributes = array(
+                'items' => $items,
+                'currency' => (string) get_woocommerce_currency()
             );
-    
+
             // Send the event
             $this->send_event('viewed_product', $event_attributes);
-    
+
         } catch (Exception $e) {
             // Log the error but don't halt execution
             error_log('Usermaven: Error tracking product view - ' . $e->getMessage());
         }
     }
-    
+
 
     /**
      * Track add to cart events
@@ -175,8 +179,9 @@ class Usermaven_WooCommerce {
         $unit_price = $product->get_price();
         $unit_price = $unit_price === '' ? 0.0 : (float) $unit_price;
         $price_total = (float) ($quantity * $unit_price);
-        
-        $event_attributes = array(
+
+        // Create items array with single product
+        $items = array(array(
             // Product Information
             'product_id' => (int) $product_id,
             'product_name' => (string) $product->get_name(),
@@ -191,28 +196,30 @@ class Usermaven_WooCommerce {
             'regular_price' => (float) $product->get_regular_price(),
             'sale_price' => (float) $product->get_sale_price(),
             'price_total' => $price_total,
-            'currency' => (string) get_woocommerce_currency(),
             'is_on_sale' => (bool) $product->is_on_sale(),
-
+            
             // Stock Information
             'stock_status' => (string) $product->get_stock_status(),
             'stock_quantity' => $product->get_stock_quantity() !== null ? 
                 (int) $product->get_stock_quantity() : 
                 null,
             'is_in_stock' => (bool) $product->is_in_stock(),
-
+            
             // Variation Details
             'variation_id' => (int) $variation_id,
-            'variation_attributes' => $variation_attributes,
+            'variation_attributes' => $variation_attributes
+        ));
 
-            // Cart State
+        $event_attributes = array(
+            'items' => $items,
+            'currency' => (string) get_woocommerce_currency(),
             'cart_total' => (float) WC()->cart->get_cart_contents_total(),
             'cart_subtotal' => (float) WC()->cart->get_subtotal(),
             'cart_tax' => (float) WC()->cart->get_cart_tax(),
             'cart_items_count' => (int) WC()->cart->get_cart_contents_count(),
             'cart_unique_items' => (int) count(WC()->cart->get_cart()),
             'applied_coupons' => array_map('strval', WC()->cart->get_applied_coupons()),
-
+            
             // Additional Context
             'added_from' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
             'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
@@ -258,34 +265,36 @@ class Usermaven_WooCommerce {
         $price_per_unit = $product->get_price();
         $price_per_unit = $price_per_unit === '' ? 0.0 : (float) $price_per_unit;
 
-        $event_attributes = array(
-            // Product Information
+        // Create items array with single product
+        $items = array(array(
             'product_id' => (int) $product_id,
             'product_name' => (string) $product->get_name(),
             'product_sku' => (string) $product->get_sku(),
             'product_type' => (string) $product->get_type(),
             'categories' => array_map('strval', $categories),
             'tags' => array_map('strval', wp_get_post_terms($product_id, 'product_tag', array('fields' => 'names'))),
-
+            
             // Removed Item Details
             'quantity_removed' => (int) $cart_item['quantity'],
             'line_total' => $line_total,
             'line_tax' => $line_tax,
             'price_per_unit' => $price_per_unit,
-            'currency' => (string) get_woocommerce_currency(),
-
+            
             // Variation Details
             'variation_id' => !empty($cart_item['variation_id']) ? (int) $cart_item['variation_id'] : 0,
-            'variation_attributes' => $variation_attributes,
+            'variation_attributes' => $variation_attributes
+        ));
 
-            // Cart State After Removal
+        $event_attributes = array(
+            'items' => $items,
+            'currency' => (string) get_woocommerce_currency(),
             'cart_total' => (float) $cart->get_cart_contents_total(),
             'cart_subtotal' => (float) $cart->get_subtotal(),
             'cart_tax' => (float) $cart->get_cart_tax(),
             'remaining_items' => (int) $cart->get_cart_contents_count(),
             'remaining_unique_items' => (int) count($cart->get_cart()),
             'applied_coupons' => array_map('strval', $cart->get_applied_coupons()),
-
+            
             // Additional Context
             'removed_from_page' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
             'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
@@ -304,20 +313,20 @@ class Usermaven_WooCommerce {
         if (!$cart_item) {
             return;
         }
-    
+
         $product_id = $cart_item['product_id'];
         $product = wc_get_product($product_id);
         if (!$product) {
             return;
         }
-    
+
         // Get product categories
         $categories = array();
         $terms = get_the_terms($product->get_id(), 'product_cat');
         if ($terms && !is_wp_error($terms)) {
             $categories = wp_list_pluck($terms, 'name');
         }
-    
+
         // Process variation attributes
         $variation_attributes = array();
         if (!empty($cart_item['variation'])) {
@@ -325,21 +334,22 @@ class Usermaven_WooCommerce {
                 $variation_attributes[$attr_key] = (string) $attr_value;
             }
         }
-    
+
         // Calculate line totals
         $unit_price = $product->get_price();
         $unit_price = $unit_price === '' ? 0.0 : (float) $unit_price;
         $old_line_total = (float) ($old_quantity * $unit_price);
         $new_line_total = (float) ($quantity * $unit_price);
-    
-        $event_attributes = array(
+
+        // Create items array with the updated product
+        $items = array(array(
             // Product Information
-            'product_name' => (string) $product->get_name(),
             'product_id' => (int) $product_id,
+            'product_name' => (string) $product->get_name(),
             'product_type' => (string) $product->get_type(),
             'categories' => array_map('strval', $categories),
             'tags' => array_map('strval', wp_get_post_terms($product_id, 'product_tag', array('fields' => 'names'))),
-    
+            
             // Quantity Change Details
             'old_quantity' => (int) $old_quantity,
             'new_quantity' => (int) $quantity,
@@ -347,37 +357,40 @@ class Usermaven_WooCommerce {
             'price' => (float) $unit_price,
             'old_line_total' => (float) $old_line_total,
             'new_line_total' => (float) $new_line_total,
-            'currency' => (string) get_woocommerce_currency(),
-    
+            
+            // Stock Information
+            'stock_status' => (string) $product->get_stock_status(),
+            'remaining_stock' => $product->get_stock_quantity() !== null ? 
+                (int) $product->get_stock_quantity() : 
+                null,
+            
+            // Variation Details
+            'variation_id' => (int) ($cart_item['variation_id'] ?? 0),
+            'variation_attributes' => $variation_attributes
+        ));
+
+        $event_attributes = array(
+            // Items Information
+            'items' => $items,
+            
             // Cart State
+            'currency' => (string) get_woocommerce_currency(),
             'cart_total' => (float) $cart->get_total('numeric'),
             'cart_subtotal' => (float) $cart->get_subtotal(),
             'cart_tax' => (float) $cart->get_cart_tax(),
             'cart_items_count' => (int) $cart->get_cart_contents_count(),
             'cart_unique_items' => (int) count($cart->get_cart()),
             'cart_discount' => (float) $cart->get_discount_total(),
-    
-            // Stock Information
-            'stock_status' => (string) $product->get_stock_status(),
-            'remaining_stock' => $product->get_stock_quantity() !== null ? 
-                (int) $product->get_stock_quantity() : 
-                null,
-    
+            'applied_coupons' => array_map('strval', $cart->get_applied_coupons()),
+            
             // Additional Context
             'update_source' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
             'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
             'timestamp' => current_time('mysql'),
             'session_id' => (string) WC()->session->get_customer_id(),
-            'user_agent' => (string) (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''),
-    
-            // Variation Details
-            'variation_id' => (int) ($cart_item['variation_id'] ?? 0),
-            'variation_attributes' => $variation_attributes,
-    
-            // Applied Coupons
-            'applied_coupons' => array_map('strval', $cart->get_applied_coupons())
+            'user_agent' => (string) (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '')
         );
-    
+
         $this->send_event('updated_cart_item', $event_attributes);
     }
 
@@ -573,19 +586,34 @@ class Usermaven_WooCommerce {
         if (!in_array($new_status, $significant_statuses)) {
             return;
         }
-    
-        $event_attributes = array(
-            'order_id' => (int) $order_id,
-            'old_status' => (string) $old_status,
-            'new_status' => (string) $new_status,
-            'total' => (float) $order->get_total(),
-            'currency' => (string) $order->get_currency(),
-            'payment_method' => (string) $order->get_payment_method(),
-            'customer_id' => $order->get_customer_id() ? (int) $order->get_customer_id() : null,
-            'billing_email' => (string) $order->get_billing_email(),
-            'timestamp' => (string) current_time('mysql')
+
+        // Get items in consistent format
+        $items = $this->get_formatted_order_items($order);
+        $location_details = $this->get_location_details($order);
+
+        $event_attributes = array_merge(
+            $this->get_common_order_attributes($order, $location_details),
+            array(
+                'order_id' => (int) $order_id,
+                'old_status' => (string) $old_status,
+                'new_status' => (string) $new_status,
+                'total' => (float) $order->get_total(),
+                'currency' => (string) $order->get_currency(),
+                'payment_method' => (string) $order->get_payment_method(),
+                
+                // Items Information
+                'items' => $items,
+                'items_count' => (int) $order->get_item_count(),
+                
+                'customer_id' => $order->get_customer_id() ? (int) $order->get_customer_id() : null,
+                'billing_email' => (string) $order->get_billing_email(),
+                'customer_note' => (string) $order->get_customer_note(),                
+                // Additional Context
+                'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
+                'timestamp' => (string) current_time('mysql')
+            )
         );
-    
+
         $this->send_event('order_status_changed', $event_attributes);
     }
 
@@ -1232,7 +1260,10 @@ class Usermaven_WooCommerce {
         if (!$order) {
             return;
         }
-    
+
+        // Get items in consistent format
+        $items = $this->get_formatted_order_items($order);
+
         $event_attributes = array(
             'order_id' => (int) $order_id,
             'total' => (float) $order->get_total(),
@@ -1240,11 +1271,12 @@ class Usermaven_WooCommerce {
             'payment_method' => (string) $order->get_payment_method(),
             'status' => (string) $order->get_status(),
             'items_count' => (int) $order->get_item_count(),
+            'items' => $items,  // Added items array
             'billing_email' => (string) $order->get_billing_email(),
             'timestamp' => (string) current_time('mysql')
         );
-    
-        $this->send_event('order_thankyou_page_view', $event_attributes);
+
+        $this->send_event('order_thankyou_page_viewed', $event_attributes);    
     }
 
     /**
@@ -1614,20 +1646,25 @@ class Usermaven_WooCommerce {
 
         $wishlist = YITH_WCWL()->get_wishlist_detail($wishlist_id);
         
+        // Create items array with single product
+        $items = array(array(
+            'product_id' => (int) $product_id,
+            'product_name' => (string) $product->get_name(),
+            'product_price' => (float) $product->get_price(),
+            'product_type' => (string) $product->get_type(),
+            'product_sku' => (string) $product->get_sku(),
+            'categories' => array_map('strval', $this->get_product_categories($product)),
+            'is_in_stock' => (bool) $product->is_in_stock(),
+            'is_on_sale' => (bool) $product->is_on_sale(),
+        ));
+        
         $event_attributes = array(
-            'product_id' => $product_id,
-            'product_name' => $product->get_name(),
-            'product_price' => $product->get_price(),
-            'currency' => get_woocommerce_currency(),
-            'wishlist_id' => $wishlist_id,
-            'wishlist_name' => $wishlist['wishlist_name'] ?? 'Default',
-            'user_id' => $user_id,
-            'total_items_in_wishlist' => YITH_WCWL()->count_products($wishlist_id),
-            'product_categories' => $this->get_product_categories($product),
-            'product_type' => $product->get_type(),
-            'product_sku' => $product->get_sku(),
-            'is_product_in_stock' => $product->is_in_stock(),
-            'is_product_on_sale' => $product->is_on_sale()
+            'items' => $items,
+            'currency' => (string) get_woocommerce_currency(),
+            'wishlist_id' => (int) $wishlist_id,
+            'wishlist_name' => (string) ($wishlist['wishlist_name'] ?? 'Default'),
+            'user_id' => (int) $user_id,
+            'total_items_in_wishlist' => (int) YITH_WCWL()->count_products($wishlist_id)
         );
 
         $this->send_event('add_to_wishlist', $event_attributes);
@@ -1648,17 +1685,26 @@ class Usermaven_WooCommerce {
         $wishlist = YITH_WCWL()->get_wishlist_detail($wishlist_id);
         $user_id = get_current_user_id();
 
+        // Create items array with single product
+        $items = array(array(
+            'product_id' => (int) $product_id,
+            'product_name' => (string) $product->get_name(),
+            'product_price' => (float) $product->get_price(),
+            'product_type' => (string) $product->get_type(),
+            'product_sku' => (string) $product->get_sku(),
+            'categories' => array_map('strval', $this->get_product_categories($product)),
+            'is_in_stock' => (bool) $product->is_in_stock(),
+            'is_on_sale' => (bool) $product->is_on_sale(),
+        ));
+
         $event_attributes = array(
-            'product_id' => $product_id,
-            'product_name' => $product->get_name(),
-            'product_price' => $product->get_price(),
-            'currency' => get_woocommerce_currency(),
-            'wishlist_id' => $wishlist_id,
-            'wishlist_name' => $wishlist['wishlist_name'] ?? 'Default',
-            'wishlist_token' => $wishlist['wishlist_token'] ?? '',
-            'user_id' => $user_id,
-            'remaining_items_in_wishlist' => YITH_WCWL()->count_products($wishlist_id),
-            'product_categories' => $this->get_product_categories($product)
+            'items' => $items,
+            'currency' => (string) get_woocommerce_currency(),
+            'wishlist_id' => (int) $wishlist_id,
+            'wishlist_name' => (string) ($wishlist['wishlist_name'] ?? 'Default'),
+            'wishlist_token' => (string) ($wishlist['wishlist_token'] ?? ''),
+            'user_id' => (int) $user_id,
+            'remaining_items_in_wishlist' => (int) YITH_WCWL()->count_products($wishlist_id)
         );
 
         $this->send_event('remove_from_wishlist', $event_attributes);
@@ -1681,16 +1727,28 @@ class Usermaven_WooCommerce {
         $from_wishlist = YITH_WCWL()->get_wishlist_detail($wishlist_from_id);
         $to_wishlist = YITH_WCWL()->get_wishlist_detail($wishlist_to_id);
 
+        // Create items array with single product
+        $items = array(array(
+            'product_id' => (int) $product_id,
+            'product_name' => (string) $product->get_name(),
+            'product_price' => (float) $product->get_price(),
+            'product_type' => (string) $product->get_type(),
+            'product_sku' => (string) $product->get_sku(),
+            'categories' => array_map('strval', $this->get_product_categories($product)),
+            'is_in_stock' => (bool) $product->is_in_stock(),
+            'is_on_sale' => (bool) $product->is_on_sale(),
+        ));
+
         $event_attributes = array(
-            'product_id' => $product_id,
-            'product_name' => $product->get_name(),
-            'from_wishlist_id' => $wishlist_from_id,
-            'from_wishlist_name' => $from_wishlist['wishlist_name'] ?? 'Default',
-            'to_wishlist_id' => $wishlist_to_id,
-            'to_wishlist_name' => $to_wishlist['wishlist_name'] ?? 'Default',
-            'user_id' => $user_id,
-            'items_in_source_wishlist' => YITH_WCWL()->count_products($wishlist_from_id),
-            'items_in_destination_wishlist' => YITH_WCWL()->count_products($wishlist_to_id)
+            'items' => $items,
+            'currency' => (string) get_woocommerce_currency(),
+            'from_wishlist_id' => (int) $wishlist_from_id,
+            'from_wishlist_name' => (string) ($from_wishlist['wishlist_name'] ?? 'Default'),
+            'to_wishlist_id' => (int) $wishlist_to_id,
+            'to_wishlist_name' => (string) ($to_wishlist['wishlist_name'] ?? 'Default'),
+            'user_id' => (int) $user_id,
+            'items_in_source_wishlist' => (int) YITH_WCWL()->count_products($wishlist_from_id),
+            'items_in_destination_wishlist' => (int) YITH_WCWL()->count_products($wishlist_to_id)
         );
 
         $this->send_event('move_wishlist_item', $event_attributes);
