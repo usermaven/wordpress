@@ -366,6 +366,7 @@ class Usermaven_WooCommerce {
             'price' => (float) $unit_price,
             'old_line_total' => (float) $old_line_total,
             'new_line_total' => (float) $new_line_total,
+            'currency' => (string) get_woocommerce_currency(),
             
             // Stock Information
             'stock_status' => (string) $product->get_stock_status(),
@@ -379,11 +380,12 @@ class Usermaven_WooCommerce {
         ));
 
         $event_attributes = array(
-            // Items Information
+            ...$items[0],
+
+            // Items Array
             'items' => $items,
             
             // Cart State
-            'currency' => (string) get_woocommerce_currency(),
             'cart_total' => (float) $cart->get_total('numeric'),
             'cart_subtotal' => (float) $cart->get_subtotal(),
             'cart_tax' => (float) $cart->get_cart_tax(),
