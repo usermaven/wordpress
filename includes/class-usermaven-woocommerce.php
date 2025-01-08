@@ -140,7 +140,7 @@ class Usermaven_WooCommerce {
             $event_attributes = array(
                 ...$items[0],
 
-                // Items array
+                // Items Array
                 'items' => $items,
             );
 
@@ -200,6 +200,7 @@ class Usermaven_WooCommerce {
             'sale_price' => (float) $product->get_sale_price(),
             'price_total' => $price_total,
             'is_on_sale' => (bool) $product->is_on_sale(),
+            'currency' => (string) get_woocommerce_currency(),
             
             // Stock Information
             'stock_status' => (string) $product->get_stock_status(),
@@ -214,14 +215,16 @@ class Usermaven_WooCommerce {
         ));
 
         $event_attributes = array(
-            'items' => $items,
-            'currency' => (string) get_woocommerce_currency(),
+            ...$items[0],
             'cart_total' => (float) WC()->cart->get_cart_contents_total(),
             'cart_subtotal' => (float) WC()->cart->get_subtotal(),
             'cart_tax' => (float) WC()->cart->get_cart_tax(),
             'cart_items_count' => (int) WC()->cart->get_cart_contents_count(),
             'cart_unique_items' => (int) count(WC()->cart->get_cart()),
             'applied_coupons' => array_map('strval', WC()->cart->get_applied_coupons()),
+            
+            // Items Array
+            'items' => $items,
             
             // Additional Context
             'added_from' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
