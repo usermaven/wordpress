@@ -130,6 +130,7 @@ class Usermaven_WooCommerce {
                 'product_id' => (int) $product->get_id(),
                 'product_name' => (string) $product->get_name(),
                 'price' => (float) $product->get_price(),
+                'currency' => (string) get_woocommerce_currency(),
                 'type' => (string) $product->get_type(),
                 'categories' => array_map('strval', $categories),
                 'sku' => (string) $product->get_sku(),
@@ -137,8 +138,10 @@ class Usermaven_WooCommerce {
             ));
 
             $event_attributes = array(
+                ...$items[0],
+
+                // Items array
                 'items' => $items,
-                'currency' => (string) get_woocommerce_currency()
             );
 
             // Send the event
