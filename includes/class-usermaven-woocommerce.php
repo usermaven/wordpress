@@ -603,7 +603,7 @@ class Usermaven_WooCommerce {
         $location_details = $this->get_location_details($order);
 
         $event_attributes = array(
-
+            
                 'order_id' => (int) $order_id,
                 'old_status' => (string) $old_status,
                 'new_status' => (string) $new_status,
@@ -1666,18 +1666,19 @@ class Usermaven_WooCommerce {
             'categories' => array_map('strval', $this->get_product_categories($product)),
             'is_in_stock' => (bool) $product->is_in_stock(),
             'is_on_sale' => (bool) $product->is_on_sale(),
+            'currency' => (string) get_woocommerce_currency(),
         ));
         
         $event_attributes = array(
+            ...$items[0],
             'items' => $items,
-            'currency' => (string) get_woocommerce_currency(),
             'wishlist_id' => (int) $wishlist_id,
             'wishlist_name' => (string) ($wishlist['wishlist_name'] ?? 'Default'),
             'user_id' => (int) $user_id,
             'total_items_in_wishlist' => (int) YITH_WCWL()->count_products($wishlist_id)
         );
 
-        $this->send_event('add_to_wishlist', $event_attributes);
+        $this->send_event('added_to_wishlist', $event_attributes);
     }
 
     /**
@@ -1705,11 +1706,12 @@ class Usermaven_WooCommerce {
             'categories' => array_map('strval', $this->get_product_categories($product)),
             'is_in_stock' => (bool) $product->is_in_stock(),
             'is_on_sale' => (bool) $product->is_on_sale(),
+            'currency' => (string) get_woocommerce_currency(),
         ));
 
         $event_attributes = array(
+            ...$items[0],
             'items' => $items,
-            'currency' => (string) get_woocommerce_currency(),
             'wishlist_id' => (int) $wishlist_id,
             'wishlist_name' => (string) ($wishlist['wishlist_name'] ?? 'Default'),
             'wishlist_token' => (string) ($wishlist['wishlist_token'] ?? ''),
@@ -1717,7 +1719,7 @@ class Usermaven_WooCommerce {
             'remaining_items_in_wishlist' => (int) YITH_WCWL()->count_products($wishlist_id)
         );
 
-        $this->send_event('remove_from_wishlist', $event_attributes);
+        $this->send_event('removed_from_wishlist', $event_attributes);
     }
 
     /**
@@ -1747,11 +1749,12 @@ class Usermaven_WooCommerce {
             'categories' => array_map('strval', $this->get_product_categories($product)),
             'is_in_stock' => (bool) $product->is_in_stock(),
             'is_on_sale' => (bool) $product->is_on_sale(),
+            'currency' => (string) get_woocommerce_currency(),
         ));
 
         $event_attributes = array(
+            ...$items[0],
             'items' => $items,
-            'currency' => (string) get_woocommerce_currency(),
             'from_wishlist_id' => (int) $wishlist_from_id,
             'from_wishlist_name' => (string) ($from_wishlist['wishlist_name'] ?? 'Default'),
             'to_wishlist_id' => (int) $wishlist_to_id,
@@ -1761,7 +1764,7 @@ class Usermaven_WooCommerce {
             'items_in_destination_wishlist' => (int) YITH_WCWL()->count_products($wishlist_to_id)
         );
 
-        $this->send_event('move_wishlist_item', $event_attributes);
+        $this->send_event('moved_wishlist_item', $event_attributes);
     }
 
     private function send_event($event_type, $event_attributes = array()) {
