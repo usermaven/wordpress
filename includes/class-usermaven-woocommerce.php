@@ -285,6 +285,7 @@ class Usermaven_WooCommerce {
             'line_total' => $line_total,
             'line_tax' => $line_tax,
             'price_per_unit' => $price_per_unit,
+            'currency' => (string) get_woocommerce_currency(),
             
             // Variation Details
             'variation_id' => !empty($cart_item['variation_id']) ? (int) $cart_item['variation_id'] : 0,
@@ -292,14 +293,16 @@ class Usermaven_WooCommerce {
         ));
 
         $event_attributes = array(
-            'items' => $items,
-            'currency' => (string) get_woocommerce_currency(),
+            ...$items[0],
             'cart_total' => (float) $cart->get_cart_contents_total(),
             'cart_subtotal' => (float) $cart->get_subtotal(),
             'cart_tax' => (float) $cart->get_cart_tax(),
             'remaining_items' => (int) $cart->get_cart_contents_count(),
             'remaining_unique_items' => (int) count($cart->get_cart()),
             'applied_coupons' => array_map('strval', $cart->get_applied_coupons()),
+            
+            // Items Array
+            'items' => $items,
             
             // Additional Context
             'removed_from_page' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
