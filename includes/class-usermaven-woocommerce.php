@@ -602,16 +602,15 @@ class Usermaven_WooCommerce {
         $items = $this->get_formatted_order_items($order);
         $location_details = $this->get_location_details($order);
 
-        $event_attributes = array_merge(
-            $this->get_common_order_attributes($order, $location_details),
-            array(
+        $event_attributes = array(
+
                 'order_id' => (int) $order_id,
                 'old_status' => (string) $old_status,
                 'new_status' => (string) $new_status,
                 'total' => (float) $order->get_total(),
                 'currency' => (string) $order->get_currency(),
                 'payment_method' => (string) $order->get_payment_method(),
-                
+            
                 // Items Information
                 'items' => $items,
                 'items_count' => (int) $order->get_item_count(),
@@ -622,7 +621,6 @@ class Usermaven_WooCommerce {
                 // Additional Context
                 'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
                 'timestamp' => (string) current_time('mysql')
-            )
         );
 
         $this->send_event('order_status_changed', $event_attributes);
@@ -834,6 +832,7 @@ class Usermaven_WooCommerce {
 
             // Customer Information
             'customer_id' => $order->get_customer_id() ? (int) $order->get_customer_id() : null,
+            'customer_note' => (string) $order->get_customer_note(),
             'customer_type' => (string) ($order->get_customer_id() ? 'registered' : 'guest'),
             'is_registered_customer' => (bool) $order->get_customer_id(),
             
