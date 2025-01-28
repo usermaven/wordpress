@@ -30,6 +30,9 @@ class Usermaven_WooCommerce {
      * Initialize all WooCommerce hooks
      */
     private function init_hooks() {
+        // Track on WooCommerce specific login
+        add_action('woocommerce_login_credentials', array($this, 'identify_wc_user'), 10, 2);
+
         // Product Viewing
         add_action('template_redirect', array($this, 'track_product_view'));
 
@@ -83,6 +86,94 @@ class Usermaven_WooCommerce {
             add_action('yith_wcwl_moved_to_another_wishlist', array($this, 'track_move_to_another_wishlist'), 10, 4);
         }
     }
+
+    /**
+     * Identify user on WooCommerce login
+     */
+    public function identify_wc_user($credentials) {
+        if (!empty($credentials['user_login'])) {
+            $user = get_user_by('login', $credentials['user_login']);
+            if ($user) {
+                $this->send_user_identify_request($user);
+            }
+        }
+        return $credentials;
+    }
+
+    /**
+     * Send identify call to Usermaven API
+     * 
+     * @param WP_User $user User object
+     */
+    private function send_user_identify_request($user) {
+        if (!$user) {
+            return;
+        }
+
+        // Get WooCommerce customer
+        $customer = new WC_Customer($user->ID);
+        
+        // Get custom user data
+        $roles = $user->roles;
+        $primary_role = !empty($roles) ? $roles[0] : '';
+
+        // Get the anonymous_id from cookie if available
+        $eventn_cookie_name = '__eventn_id_' . $this->api_key;
+        $usermaven_cookie_name = 'usermaven_id_' . $this->api_key;
+        $anonymous_id = '';
+
+        if (isset($_COOKIE[$eventn_cookie_name])) {
+            $anonymous_id = $_COOKIE[$eventn_cookie_name];
+        } elseif (isset($_COOKIE[$usermaven_cookie_name])) {
+            $anonymous_id = $_COOKIE[$usermaven_cookie_name];
+        }
+
+        $user_id = $user->ID;
+        $user_email = $user->user_email;
+
+        // if user id is null use email as user id
+        if (empty($user_id)) {
+            $user_id = $user_email;
+        }
+
+        // Prepare user data
+        $user_data = array(
+            'anonymous_id' => $anonymous_id,
+            'id' => (string) $user_id,
+            'email' => (string) $user_email,
+            'created_at' => date('Y-m-d\TH:i:s', strtotime($user->user_registered)),
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'custom' => array(
+                'role' => $primary_role,
+                'username' => $user->user_login,
+                'display_name' => $user->display_name,
+                'billing_country' => $customer->get_billing_country(),
+                'shipping_country' => $customer->get_shipping_country(),
+                'is_paying_customer' => (bool) $customer->get_is_paying_customer()
+            )
+        );
+
+        // Prepare company data if available
+        $company_data = array();
+        $company_name = $customer->get_billing_company();
+        if (!empty($company_name)) {
+            $company_data = array(
+                'id' => 'wc_' . md5($company_name . $customer->get_billing_email()),
+                'name' => $company_name,
+                'created_at' => date('Y-m-d\TH:i:s', strtotime($user->user_registered)),
+                'custom' => array(
+                    'billing_country' => $customer->get_billing_country(),
+                    'billing_city' => $customer->get_billing_city(),
+                    'billing_postcode' => $customer->get_billing_postcode()
+                )
+            );
+        }
+
+        // Send identify request using the API
+        $this->api->identify($user_data, $company_data);
+    }
+
 
     /**
      * Reset the initiate checkout tracking flag
