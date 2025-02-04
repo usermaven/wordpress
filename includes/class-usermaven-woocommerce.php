@@ -100,6 +100,18 @@ class Usermaven_WooCommerce {
         return $credentials;
     }
 
+    private function get_anonymous_id() {
+        $eventn_cookie_name = '__eventn_id_' . $this->api_key;
+        $usermaven_cookie_name = 'usermaven_id_' . $this->api_key;
+        
+        if (isset($_COOKIE[$eventn_cookie_name])) {
+            return $_COOKIE[$eventn_cookie_name];
+        } elseif (isset($_COOKIE[$usermaven_cookie_name])) {
+            return $_COOKIE[$usermaven_cookie_name];
+        }
+        return '';
+    }
+
     /**
      * Send identify call to Usermaven API
      * 
@@ -110,64 +122,70 @@ class Usermaven_WooCommerce {
             return;
         }
 
-        // Get WooCommerce customer
-        $customer = new WC_Customer($user->ID);
-        
-        // Get custom user data
-        $roles = $user->roles;
-        $primary_role = !empty($roles) ? $roles[0] : '';
-
-        // Get the anonymous_id from cookie if available
-        $eventn_cookie_name = '__eventn_id_' . $this->api_key;
-        $usermaven_cookie_name = 'usermaven_id_' . $this->api_key;
-        $anonymous_id = '';
-
-        if (isset($_COOKIE[$eventn_cookie_name])) {
-            $anonymous_id = $_COOKIE[$eventn_cookie_name];
-        } elseif (isset($_COOKIE[$usermaven_cookie_name])) {
-            $anonymous_id = $_COOKIE[$usermaven_cookie_name];
-        }
-
-        $user_id = $user->ID;
-        $user_email = $user->user_email;
-
-        // if user id is null use email as user id
-        if (empty($user_id)) {
-            $user_id = $user_email;
-        }
-
-        // Prepare user data
-        $user_data = array(
-            'anonymous_id' => $anonymous_id,
-            'id' => (string) $user_id,
-            'email' => (string) $user_email,
-            'created_at' => date('Y-m-d\TH:i:s', strtotime($user->user_registered)),
-            'first_name' => $user->first_name,
-            'last_name' => $user->last_name,
-            'custom' => array(
-                'role' => $primary_role,
-                'username' => $user->user_login,
-                'display_name' => $user->display_name,
-                'billing_country' => $customer->get_billing_country(),
-                'shipping_country' => $customer->get_shipping_country(),
-                'is_paying_customer' => (bool) $customer->get_is_paying_customer()
-            )
-        );
-
-        // Prepare company data if available
-        $company_data = array();
-        $company_name = $customer->get_billing_company();
-        if (!empty($company_name)) {
-            $company_data = array(
-                'id' => 'wc_' . md5($company_name . $customer->get_billing_email()),
-                'name' => $company_name,
+        if ($user->ID) {
+            // Get WooCommerce customer
+            $customer = new WC_Customer($user->ID);
+            
+            // Get custom user data
+            $roles = $user->roles;
+            $primary_role = !empty($roles) ? $roles[0] : '';
+    
+            // Get the anonymous_id from cookie if available
+            $anonymous_id = $this->get_anonymous_id();
+    
+            $user_id = $user->ID;
+            $user_email = $user->user_email;
+    
+            // if user id is null use email as user id
+            if (empty($user_id)) {
+                $user_id = $user_email;
+            }
+    
+            // Prepare user data
+            $user_data = array(
+                'anonymous_id' => $anonymous_id,
+                'id' => $user_id ? (string)$user_id : $user_email,
+                'email' => (string) $user_email,
                 'created_at' => date('Y-m-d\TH:i:s', strtotime($user->user_registered)),
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
                 'custom' => array(
-                    'billing_country' => $customer->get_billing_country(),
+                    'type' => $user_id ? 'registered' : 'guest', 
+                    'role' => $primary_role,
+                    'username' => $user->user_login,
+                    'display_name' => $user->display_name,
+                    'billing_company' => $customer->get_billing_company(),
+                    'billing_email' => $customer->get_billing_email(),
+                    'billing_phone' => $customer->get_billing_phone(),
+                    'billing_postcode' => $customer->get_billing_postcode(),
                     'billing_city' => $customer->get_billing_city(),
-                    'billing_postcode' => $customer->get_billing_postcode()
+                    'billing_state' => $customer->get_billing_state(),
+                    'billing_country' => $customer->get_billing_country(),
+                    'billing_address_1' => (string) $order->get_billing_address_1(),
+                    'billing_address_2' => (string) $order->get_billing_address_2(),
+                    'is_paying_customer' => (bool) $customer->get_is_paying_customer()
                 )
             );
+
+            // Prepare company data if available
+            $company_data = array();
+            $company_name = $customer->get_billing_company();
+            if (!empty($company_name)) {
+                $company_data = array(
+                    'id' => 'wc_' . md5($company_name . $customer->get_billing_email()),
+                    'name' => $company_name,
+                    'created_at' => date('Y-m-d\TH:i:s', strtotime($user->user_registered)),
+                    'custom' => array(
+                        'billing_country' => $customer->get_billing_country(),
+                        'billing_city' => $customer->get_billing_city(),
+                        'billing_postcode' => $customer->get_billing_postcode()
+                    )
+                );
+            }
+
+        } else {
+            $user_data = $user;
+            $company_data = array();
         }
 
         // Send identify request using the API
@@ -970,6 +988,39 @@ class Usermaven_WooCommerce {
             return;
         }
 
+        // Get user identification details for user identify event
+        $user_id = $order->get_customer_id();
+        $user = get_user_by('id', $user_id);
+        $user_email = $user->user_email;
+
+        if (!$user) {
+            $user = array(
+                'anonymous_id' => $anonymous_id,
+                'id' => $user_id ? (string)$user_id : $billing_email, // Use email as ID for guests
+                'email' => $billing_email,
+                'created_at' => '', // Empty for guest users
+                'first_name' => $order->get_billing_first_name(),
+                'last_name' => $order->get_billing_last_name(),
+                'custom' => array(
+                    'type' => $user ? 'registered' : 'guest',
+                    'role' => '',
+                    'username' => '',
+                    'display_name' => '',
+                    'billing_company' => $order->get_billing_company(),
+                    'billing_email' => $order->get_billing_email(),
+                    'billing_phone' => $order->get_billing_phone(),
+                    'billing_postcode' => $order->get_billing_postcode(),
+                    'billing_city' => $order->get_billing_city(),
+                    'billing_state' => $order->get_billing_state(),
+                    'billing_country' => $order->get_billing_country(),
+                    'billing_address_1' => $order->get_billing_address_1(),
+                    'billing_address_2' => $order->get_billing_address_2(),
+                )
+            );
+        }
+
+        $this->send_user_identify_request($user);
+
         $location_details = $this->get_location_details($order);
         $items = $this->get_formatted_order_items($order);
 
@@ -1503,6 +1554,42 @@ class Usermaven_WooCommerce {
      * Track new customer creation
      */
     public function track_customer_created($customer_id, $new_customer_data, $password_generated) {
+        // Get the WC_Customer object for additional data
+        $customer = new WC_Customer($customer_id);
+
+        // Get user identification details for user identify event
+        $user = get_user_by('id', $customer_id);
+        $user_email = $user->user_email;
+
+        // if (!$user) {
+        //     $user = array(
+        //         'anonymous_id' => $anonymous_id,
+        //         'id' => $user_id ? (string)$user_id : $billing_email, // Use email as ID for guests
+        //         'email' => $billing_email,
+        //         'created_at' => '', // Empty for guest users
+        //         'first_name' => $order->get_billing_first_name(),
+        //         'last_name' => $order->get_billing_last_name(),
+        //         'custom' => array(
+        //             'type' => $user ? 'registered' : 'guest',
+        //             'role' => '',
+        //             'username' => '',
+        //             'display_name' => '',
+        //             'billing_company' => $order->get_billing_company(),
+        //             'billing_email' => $order->get_billing_email(),
+        //             'billing_phone' => $order->get_billing_phone(),
+        //             'billing_postcode' => $order->get_billing_postcode(),
+        //             'billing_city' => $order->get_billing_city(),
+        //             'billing_state' => $order->get_billing_state(),
+        //             'billing_country' => $order->get_billing_country(),
+        //             'billing_address_1' => $order->get_billing_address_1(),
+        //             'billing_address_2' => $order->get_billing_address_2(),
+        //         )
+        //     );
+        // }
+
+        // $this->send_user_identify_request($user);
+                
+
         $event_attributes = array(
             'customer_id' => $customer_id,
             'email' => $new_customer_data['user_email'],
@@ -1871,18 +1958,8 @@ class Usermaven_WooCommerce {
     private function get_user_data() {
         $user = wp_get_current_user();
 
-        // Construct the cookie names
-        $eventn_cookie_name = '__eventn_id_' . $this->api_key;
-        $usermaven_cookie_name = 'usermaven_id_' . $this->api_key;
-
-        // Check for the cookies in order of preference
-        if (isset($_COOKIE[$eventn_cookie_name])) {
-            $anonymous_id = $_COOKIE[$eventn_cookie_name]; // for old pixel
-        } elseif (isset($_COOKIE[$usermaven_cookie_name])) {
-            $anonymous_id = $_COOKIE[$usermaven_cookie_name]; // for new pixel
-        } else {
-            $anonymous_id = '';
-        }
+        // Generate anonymous ID if user is not logged in
+        $anonymous_id = $this->get_anonymous_id();
 
         $user_data = array(
             'anonymous_id' => $anonymous_id,
