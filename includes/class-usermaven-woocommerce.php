@@ -161,8 +161,8 @@ class Usermaven_WooCommerce {
                     'billing_city' => $customer->get_billing_city(),
                     'billing_state' => $customer->get_billing_state(),
                     'billing_country' => $customer->get_billing_country(),
-                    'billing_address_1' => (string) $order->get_billing_address_1(),
-                    'billing_address_2' => (string) $order->get_billing_address_2(),
+                    'billing_address_1' => (string) $customer->get_billing_address_1(),
+                    'billing_address_2' => (string) $customer->get_billing_address_2(),
                     'is_paying_customer' => (bool) $customer->get_is_paying_customer()
                 )
             );
@@ -1561,33 +1561,33 @@ class Usermaven_WooCommerce {
         $user = get_user_by('id', $customer_id);
         $user_email = $user->user_email;
 
-        // if (!$user) {
-        //     $user = array(
-        //         'anonymous_id' => $anonymous_id,
-        //         'id' => $user_id ? (string)$user_id : $billing_email, // Use email as ID for guests
-        //         'email' => $billing_email,
-        //         'created_at' => '', // Empty for guest users
-        //         'first_name' => $order->get_billing_first_name(),
-        //         'last_name' => $order->get_billing_last_name(),
-        //         'custom' => array(
-        //             'type' => $user ? 'registered' : 'guest',
-        //             'role' => '',
-        //             'username' => '',
-        //             'display_name' => '',
-        //             'billing_company' => $order->get_billing_company(),
-        //             'billing_email' => $order->get_billing_email(),
-        //             'billing_phone' => $order->get_billing_phone(),
-        //             'billing_postcode' => $order->get_billing_postcode(),
-        //             'billing_city' => $order->get_billing_city(),
-        //             'billing_state' => $order->get_billing_state(),
-        //             'billing_country' => $order->get_billing_country(),
-        //             'billing_address_1' => $order->get_billing_address_1(),
-        //             'billing_address_2' => $order->get_billing_address_2(),
-        //         )
-        //     );
-        // }
+        if (!$user) {
+            $user = array(
+                'anonymous_id' => $anonymous_id,
+                'id' => $user_id ? (string)$user_id : $billing_email, // Use email as ID for guests
+                'email' => $billing_email,
+                'created_at' => '', // Empty for guest users
+                'first_name' => $customer->get_billing_first_name(),
+                'last_name' => $customer->get_billing_last_name(),
+                'custom' => array(
+                    'type' => $user ? 'registered' : 'guest',
+                    'role' => '',
+                    'username' => '',
+                    'display_name' => '',
+                    'billing_company' => $customer->get_billing_company(),
+                    'billing_email' => $customer->get_billing_email(),
+                    'billing_phone' => $customer->get_billing_phone(),
+                    'billing_postcode' => $customer->get_billing_postcode(),
+                    'billing_city' => $customer->get_billing_city(),
+                    'billing_state' => $customer->get_billing_state(),
+                    'billing_country' => $customer->get_billing_country(),
+                    'billing_address_1' => $customer->get_billing_address_1(),
+                    'billing_address_2' => $customer->get_billing_address_2(),
+                )
+            );
+        }
 
-        // $this->send_user_identify_request($user);
+        $this->send_user_identify_request($user);
                 
 
         $event_attributes = array(
