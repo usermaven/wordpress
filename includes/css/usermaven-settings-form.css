@@ -32,6 +32,11 @@
     cursor: pointer;
 }
 
+.header-button:hover {
+    background-color: #6535c7;
+    color: white;
+}
+
 .company-logo{
     height: 50px;
     padding: 20px;
