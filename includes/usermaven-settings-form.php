@@ -171,16 +171,7 @@ function usermaven_activation_form() {
         $woocommerce_active = class_exists('WooCommerce');
         $track_woocommerce = get_option('usermaven_track_woocommerce');
         $disable_sections = $woocommerce_active && $track_woocommerce;
-        ?>
-
-        <?php if ($disable_sections): ?>
-        <div class="usermaven-notice">
-            <svg class="notice-icon" viewBox="0 0 24 24" width="20" height="20">
-                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-            <span>This section is disabled because WooCommerce tracking is enabled. User identification is handled internally through WooCommerce integration.</span>
-        </div>
-        <?php endif; ?>
+        $defalut_enabled_user_tracking_with_woocomerce = $woocommerce_active && $track_woocommerce ? true : get_option('usermaven_identify_verification');?>
 
         <div class="input-block" id="identify-users-section" <?php echo $disable_sections ? 'style="opacity: 0.5;"' : ''; ?>>
         <h3>Tracking identified users</h3>
@@ -189,54 +180,54 @@ function usermaven_activation_form() {
         </p>
         <label for="identify_verification">
         <input type="checkbox" name="identify_verification" id="identify_verification" value="true" 
-            <?php checked(get_option('usermaven_identify_verification'), true); ?>
+            <?php checked($defalut_enabled_user_tracking_with_woocomerce, true); ?>
             <?php echo $disable_sections ? 'disabled' : ''; ?>>
         Identify logged-in users in Useramven
         </label>
         </div>
-
+        
         <?php if ($disable_sections): ?>
         <div class="usermaven-notice">
             <svg class="notice-icon" viewBox="0 0 24 24" width="20" height="20">
                 <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
             </svg>
-            <span>This section is disabled because WooCommerce tracking is enabled. User roles tracking is handled internally through WooCommerce integration.</span>
+            <span>User identification is automatically enabled with WooCommerce tracking. All users are identified by default, while tracking for Administrator, Author, Contributor, Editor, Subscriber, and Translator roles can be selectively enabled below.</span>
         </div>
         <?php endif; ?>
 
-        <div class="input-block" id="user-roles-section" <?php echo $disable_sections ? 'style="opacity: 0.5;"' : ''; ?>>
+        <div class="input-block" >
         <h3>Enable tracking for user roles</h3>
 
         <p class="input-text">
         By default, visits from logged in users are not tracked. If you want to track visits from certain user roles, you can enable this setting.
         </p>
         <label for="role_administrator">
-            <input type="checkbox" name="role_administrator" id="role_administrator" value="false" <?php checked( get_option('usermaven_role_administrator'), true ); ?><?php echo $disable_sections ? 'disabled' : ''; ?>>
+            <input type="checkbox" name="role_administrator" id="role_administrator" value="false" <?php checked( get_option('usermaven_role_administrator'), true ); ?>>
             Administrator
         </label>
 
         <label for="role_author">
-            <input type="checkbox" name="role_author" id="role_author" value="false" <?php checked( get_option('usermaven_role_author'), true ); ?><?php echo $disable_sections ? 'disabled' : ''; ?>>
+            <input type="checkbox" name="role_author" id="role_author" value="false" <?php checked( get_option('usermaven_role_author'), true ); ?>>
             Author
         </label>
 
         <label for="role_contributor">
-            <input type="checkbox" name="role_contributor" id="role_contributor" value="false" <?php checked( get_option('usermaven_role_contributor'), true ); ?><?php echo $disable_sections ? 'disabled' : ''; ?>>
+            <input type="checkbox" name="role_contributor" id="role_contributor" value="false" <?php checked( get_option('usermaven_role_contributor'), true ); ?>>
             Contributor
         </label>
 
         <label for="role_editor">
-            <input type="checkbox" name="role_editor" id="role_editor" value="false" <?php checked( get_option('usermaven_role_editor'), true ); ?><?php echo $disable_sections ? 'disabled' : ''; ?>>
+            <input type="checkbox" name="role_editor" id="role_editor" value="false" <?php checked( get_option('usermaven_role_editor'), true ); ?>>
             Editor
         </label>
 
         <label for="role_subscriber">
-            <input type="checkbox" name="role_subscriber" id="role_subscriber" value="false" <?php checked( get_option('usermaven_role_subscriber'), true ); ?><?php echo $disable_sections ? 'disabled' : ''; ?>>
+            <input type="checkbox" name="role_subscriber" id="role_subscriber" value="false" <?php checked( get_option('usermaven_role_subscriber'), true ); ?>>
             Subscriber
         </label>
 
         <label for="role_translator">
-            <input type="checkbox" name="role_translator" id="role_translator" value="false" <?php checked( get_option('usermaven_role_translator'), true ); ?><?php echo $disable_sections ? 'disabled' : ''; ?>>
+            <input type="checkbox" name="role_translator" id="role_translator" value="false" <?php checked( get_option('usermaven_role_translator'), true ); ?>>
             Translator
         </label>
         </div>
@@ -374,21 +365,15 @@ function usermaven_activation_form() {
         document.addEventListener('DOMContentLoaded', function() {
             const wooCommerceCheckbox = document.getElementById('track_woocommerce');
             const identifyUsersSection = document.getElementById('identify-users-section');
-            const userRolesSection = document.getElementById('user-roles-section');
             const identifyVerificationCheckbox = document.getElementById('identify_verification');
-            const roleCheckboxes = document.querySelectorAll('input[name^="role_"]');
 
             function updateSections() {
                 if (wooCommerceCheckbox && !wooCommerceCheckbox.disabled && wooCommerceCheckbox.checked) {
-                    identifyUsersSection.style.opacity = '0.5';
-                    userRolesSection.style.opacity = '0.5';
+                    identifyUsersSection.style.opacity = '0.7';
                     identifyVerificationCheckbox.disabled = true;
-                    roleCheckboxes.forEach(checkbox => checkbox.disabled = true);
                 } else {
                     identifyUsersSection.style.opacity = '1';
-                    userRolesSection.style.opacity = '1';
                     identifyVerificationCheckbox.disabled = false;
-                    roleCheckboxes.forEach(checkbox => checkbox.disabled = false);
                 }
             }
 

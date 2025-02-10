@@ -92,7 +92,14 @@ class Usermaven_WooCommerce {
      */
     public function identify_wc_user($credentials) {
         if (!empty($credentials['user_login'])) {
+            // Try getting user by login first
             $user = get_user_by('login', $credentials['user_login']);
+            
+            // If no user found, try by email
+            if (!$user) {
+                $user = get_user_by('email', $credentials['user_login']);
+            }
+
             if ($user) {
                 $this->send_user_identify_request($user);
             }
@@ -112,6 +119,25 @@ class Usermaven_WooCommerce {
         return '';
     }
 
+    private function is_user_role_tracking_allowed($current_user_role) {
+        $usermaven_roles = [
+            'administrator',
+            'author',
+            'contributor',
+            'editor',
+            'subscriber',
+            'translator'
+        ];
+        
+        if (in_array($current_user_role, $usermaven_roles)) {
+            $usermaven_tracking_enabled = get_option('usermaven_role_' . $current_user_role);
+            return $usermaven_tracking_enabled == "1" ? true : false;
+        }
+        
+        // For roles other than the specified Usermaven roles in settings form, return true
+        return true;
+    }
+
     /**
      * Send identify call to Usermaven API
      * 
@@ -129,6 +155,8 @@ class Usermaven_WooCommerce {
             // Get custom user data
             $roles = $user->roles;
             $primary_role = !empty($roles) ? $roles[0] : '';
+
+            $is_user_tracking_allowed = $this->is_user_role_tracking_allowed($primary_role);
     
             // Get the anonymous_id from cookie if available
             $anonymous_id = $this->get_anonymous_id();
@@ -184,12 +212,18 @@ class Usermaven_WooCommerce {
             }
 
         } else {
+            $roles = $user->roles;
+            $primary_role = !empty($roles) ? $roles[0] : '';
+
+            $is_user_tracking_allowed = $this->is_user_role_tracking_allowed($primary_role);
             $user_data = $user;
             $company_data = array();
         }
 
-        // Send identify request using the API
-        $this->api->identify($user_data, $company_data);
+        // Send identify request using the API if is_user_tracking_allowed is true
+        if ($is_user_tracking_allowed) {
+            $this->api->identify($user_data, $company_data);
+        }
     }
 
 
