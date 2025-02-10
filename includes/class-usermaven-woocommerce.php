@@ -1027,11 +1027,17 @@ class Usermaven_WooCommerce {
         $user = get_user_by('id', $user_id);
         $user_email = $user->user_email;
 
+        // if user is not found, use billing email as user email
+        $billing_email = $order->get_billing_email();
+        if (!$user_email) {
+            $user_email = $billing_email;
+        }
+
         if (!$user) {
             $user = array(
-                'anonymous_id' => $anonymous_id,
-                'id' => $user_id ? (string)$user_id : $billing_email, // Use email as ID for guests
-                'email' => $billing_email,
+                'anonymous_id' => $this->get_anonymous_id(),
+                'id' => $user_id ? (string)$user_id : $user_email, // Use email as ID for guests
+                'email' => $user_email,
                 'created_at' => '', // Empty for guest users
                 'first_name' => $order->get_billing_first_name(),
                 'last_name' => $order->get_billing_last_name(),
@@ -1041,7 +1047,7 @@ class Usermaven_WooCommerce {
                     'username' => '',
                     'display_name' => '',
                     'billing_company' => $order->get_billing_company(),
-                    'billing_email' => $order->get_billing_email(),
+                    'billing_email' => $billing_email,
                     'billing_phone' => $order->get_billing_phone(),
                     'billing_postcode' => $order->get_billing_postcode(),
                     'billing_city' => $order->get_billing_city(),
@@ -1592,20 +1598,25 @@ class Usermaven_WooCommerce {
         $customer = new WC_Customer($customer_id);
 
         // Get user identification details for user identify event
-        $user = get_user_by('id', $customer_id);
+        $user_id = $customer_id;
+        $user = get_user_by('id', $user_id);
         $user_email = $user->user_email;
+
+        if (!$user_email) {
+            $user_email = $new_customer_data['user_email'];
+        }
 
         if (!$user) {
             $user = array(
-                'anonymous_id' => $anonymous_id,
-                'id' => $user_id ? (string)$user_id : $billing_email, // Use email as ID for guests
-                'email' => $billing_email,
-                'created_at' => '', // Empty for guest users
+                'anonymous_id' => $this->get_anonymous_id(),
+                'id' => $user_id ? (string)$user_id : $user_email, // Use email as ID for guests
+                'email' => $user_email,
+                'created_at' => date('Y-m-d\TH:i:s', strtotime($user->user_registered)),
                 'first_name' => $customer->get_billing_first_name(),
                 'last_name' => $customer->get_billing_last_name(),
                 'custom' => array(
                     'type' => $user ? 'registered' : 'guest',
-                    'role' => '',
+                    'role' => $new_customer_data['role'],
                     'username' => '',
                     'display_name' => '',
                     'billing_company' => $customer->get_billing_company(),
