@@ -32,19 +32,21 @@ class Usermaven_WooCommerce {
     private function init_hooks() {
         // Track on WooCommerce specific login
         add_action('woocommerce_login_credentials', array($this, 'identify_wc_user'), 10, 2);
-
+    
         // Product Viewing
         add_action('template_redirect', array($this, 'track_product_view'));
-
+    
         // Cart Actions
         add_action('woocommerce_add_to_cart', array($this, 'track_add_to_cart'), 10, 6);
         add_action('woocommerce_cart_item_removed', array($this, 'track_remove_from_cart'), 10, 2);
         add_action('woocommerce_after_cart_item_quantity_update', array($this, 'track_cart_update'), 10, 4);
-
-        // Checkout Process
-        add_action('woocommerce_before_checkout_form', array($this, 'track_initiate_checkout'), 10);
-        add_action('woocommerce_checkout_order_processed', array($this, 'track_order_submission'), 10, 3);
-        
+    
+        // Checkout Process - Consolidated tracking
+        // add_action('woocommerce_before_checkout_form', array($this, 'track_initiate_checkout'), 10); // Removed this because it was not triggering for custom checkout pages
+        add_action('wp', array($this, 'maybe_track_checkout_init'));
+        // add_action('woocommerce_checkout_order_processed', array($this, 'track_order_submission'), 10, 3); // Removed this because it was not triggering for custom checkout pages
+        add_action('woocommerce_new_order', array($this, 'track_order_submission'), 10, 1);
+    
         // Order Status and Completion
         // add_action('woocommerce_payment_complete', array($this, 'track_order_completed'));
         add_action('woocommerce_order_status_changed', array($this, 'track_order_status_changed'), 10, 4);
@@ -56,29 +58,34 @@ class Usermaven_WooCommerce {
         add_action('woocommerce_order_status_cancelled', array($this, 'track_order_cancelled'), 10, 1);
         add_action('woocommerce_order_status_refunded', array($this, 'track_order_refunded'), 10, 2);
         add_action('woocommerce_order_status_draft', array($this, 'track_order_draft'), 10, 1);
-
+    
         // Track customer creation
         add_action('woocommerce_created_customer', array($this, 'track_customer_created'), 10, 3);
-
-        // Reset the tracking flag when the cart is updated or order completes/fails
-        add_action('woocommerce_cart_updated', array($this, 'reset_initiate_checkout_tracking'));
-        add_action('woocommerce_thankyou', array($this, 'track_order_thankyou'), 10);
+    
+        // Reset tracking state for cart updates
+        add_action('woocommerce_cart_updated', array($this, 'reset_checkout_tracking'));
+        add_action('woocommerce_cart_emptied', array($this, 'reset_checkout_tracking'));
+        add_action('woocommerce_after_cart_item_quantity_update', array($this, 'reset_checkout_tracking'));
+        
+        // Reset tracking for order completion/failure
         add_action('woocommerce_order_status_completed', array($this, 'reset_initiate_checkout_tracking'));
         add_action('woocommerce_order_status_failed', array($this, 'reset_initiate_checkout_tracking'));
-
-
+        
+        // Track order thank you page
+        add_action('woocommerce_thankyou', array($this, 'track_order_thankyou'), 10);
+    
         // Initialize cart abandonment tracking
         add_action('woocommerce_init', function() {
             $this->init_cart_abandonment_tracking();
         });
-
+    
         // Add session cleanup on successful order
         add_action('woocommerce_checkout_order_processed', function() {
             // Clear abandonment tracking when order is completed
             WC()->session->set('checkout_started', false);
             WC()->session->set('last_activity', null);
         });
-
+    
         // Wishlist Integration (if using WooCommerce Wishlist)
         if (class_exists('YITH_WCWL')) {
             add_action('yith_wcwl_added_to_wishlist', array($this, 'track_add_to_wishlist'), 10, 3);
@@ -497,21 +504,64 @@ class Usermaven_WooCommerce {
     }
 
     /**
-     * Track checkout initiation
+     * Single entry point for tracking checkout initialization
+     * This ensures we don't have multiple competing triggers
      */
-    public function track_initiate_checkout() {
+    public function maybe_track_checkout_init() {
+        // Early exit conditions
         if (WC()->cart->is_empty()) {
             return;
         }
-    
+
+        // Get a unique identifier for current cart state
+        $cart_hash = WC()->cart->get_cart_hash();
+        
+        // Get stored tracking data
+        $tracked_cart_hash = WC()->session->get('usermaven_tracked_cart_hash');
+        $last_tracked_time = WC()->session->get('usermaven_last_checkout_track_time');
+        $current_time = time();
+
+        // Check if this specific cart state has been tracked recently
+        if ($tracked_cart_hash === $cart_hash && 
+            $last_tracked_time && 
+            ($current_time - $last_tracked_time) < 300) { // 5 minutes threshold
+            return;
+        }
+
+        if (is_cart()) {
+            return;
+        }
+
+        // Check if we're actually on a checkout page/process
+        $is_checkout_context = (
+            // Only track on actual checkout page, not cart page
+            (function_exists('is_checkout') && is_checkout()) ||
+            // For custom checkout pages
+            (has_shortcode(get_post()->post_content ?? '', 'woocommerce_checkout')) ||
+            // For AJAX checkout requests
+            (isset($_REQUEST['wc-ajax']) && $_REQUEST['wc-ajax'] === 'checkout')
+        );
+
+        if (!$is_checkout_context) {
+            return;
+        }
+
+        $this->track_initiate_checkout($cart_hash);
+        WC()->session->set('usermaven_initiate_checkout_tracked', true);
+    }
+
+    /**
+     * Track checkout initiation with duplicate prevention
+     */
+    private function track_initiate_checkout($cart_hash) {
         // Prevent duplicate tracking
         if (WC()->session->get('usermaven_initiate_checkout_tracked')) {
             return;
         }
-    
+
         $cart = WC()->cart;
         $items = array();
-    
+
         // Get WC Countries object for location handling
         $wc_countries = new WC_Countries();
         
@@ -520,20 +570,20 @@ class Usermaven_WooCommerce {
             if (!($product instanceof WC_Product)) {
                 continue;
             }
-    
+
             // Get the parent product if this is a variation
             $parent_product = $product;
             if ($product instanceof WC_Product_Variation) {
                 $parent_product = wc_get_product($product->get_parent_id());
             }
-    
+
             // Get product categories from parent product
             $categories = array();
             $terms = get_the_terms($parent_product->get_id(), 'product_cat');
             if ($terms && !is_wp_error($terms)) {
                 $categories = wp_list_pluck($terms, 'name');
             }
-    
+
             // Process variation attributes - keeping attribute_ prefix
             $variation_attributes = array();
             if (!empty($cart_item['variation'])) {
@@ -541,11 +591,11 @@ class Usermaven_WooCommerce {
                     $variation_attributes[$attr_key] = (string) $attr_value;
                 }
             }
-    
+
             // Get and validate prices
             $unit_price = $product->get_price();
             $unit_price = $unit_price === '' ? 0.0 : (float) $unit_price;
-    
+
             $items[] = array(
                 'product_id' => (int) $parent_product->get_id(),
                 'product_name' => (string) $parent_product->get_name(),
@@ -555,36 +605,38 @@ class Usermaven_WooCommerce {
                 'line_total' => (float) $cart_item['line_total'],
                 'line_tax' => (float) $cart_item['line_tax'],
                 'categories' => array_map('strval', $categories),
-                'variation_id' => !empty($cart_item['variation_id']) ? (int) $cart_item['variation_id'] : null,
+                'variation_id' => isset($cart_item['variation_id']) ? (int) $cart_item['variation_id'] : null,
                 'variation_attributes' => $variation_attributes,
                 'is_on_sale' => (bool) $product->is_on_sale(),
                 'stock_status' => (string) $product->get_stock_status()
             );
         }
-    
+            
         $billing_country_code = WC()->customer->get_billing_country();
         $shipping_country_code = WC()->customer->get_shipping_country();
-    
+
         $event_attributes = array(
             // Cart Financial Details
+            'cart_hash' => $cart_hash,
             'total' => (float) $cart->get_total('numeric'),
             'subtotal' => (float) $cart->get_subtotal(),
+            'cart_tax' => (float) $cart->get_cart_tax(),
             'tax' => (float) $cart->get_total_tax(),
             'shipping_total' => (float) $cart->get_shipping_total(),
             'discount_total' => (float) $cart->get_discount_total(),
             'currency' => (string) get_woocommerce_currency(),
-            
+
             // Cart Contents
             'items_count' => (int) $cart->get_cart_contents_count(),
             'unique_items' => (int) count($cart->get_cart()),
             'items' => $items,
             'weight_total' => (float) $cart->get_cart_contents_weight(),
-            
+
             // Applied Discounts
             'coupons' => array_map('strval', $cart->get_applied_coupons()),
             'coupon_discount' => (float) $cart->get_discount_total(),
             'tax_discount' => (float) $cart->get_discount_tax(),
-            
+
             // Shipping Information
             'needs_shipping' => (bool) $cart->needs_shipping(),
             'shipping_methods' => array_map('strval', WC()->session->get('chosen_shipping_methods') ?: array()),
@@ -598,20 +650,30 @@ class Usermaven_WooCommerce {
             'billing_country_name' => (string) ($billing_country_code ? $wc_countries->countries[$billing_country_code] : ''),
             'shipping_country_code' => (string) $shipping_country_code,
             'shipping_country_name' => (string) ($shipping_country_code ? $wc_countries->countries[$shipping_country_code] : ''),
+            'payment_methods' => array_keys(WC()->payment_gateways->get_available_payment_gateways()),
             
             // Additional Context
             'device_type' => (string) (wp_is_mobile() ? 'mobile' : 'desktop'),
             'referrer' => (string) (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
-            'timestamp' => current_time('mysql'),
+            'timestamp' => (string) current_time('mysql'),
             'checkout_page' => (string) (is_checkout() ? 'standard' : 'custom'),
             'user_agent' => (string) (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''),
-            'cart_hash' => (string) WC()->cart->get_cart_hash()
         );
-        
+
+        // Send the event
         $this->send_event('initiated_checkout', $event_attributes);
-        
-        // Set the session variable to prevent duplicate tracking
-        WC()->session->set('usermaven_initiate_checkout_tracked', true);
+
+        // Update tracking state
+        WC()->session->set('usermaven_tracked_cart_hash', $cart_hash);
+        WC()->session->set('usermaven_last_checkout_track_time', time());
+    }
+
+    /**
+     * Reset tracking state when cart is updated
+     */
+    public function reset_checkout_tracking() {
+        WC()->session->set('usermaven_tracked_cart_hash', null);
+        WC()->session->set('usermaven_last_checkout_track_time', null);
     }
 
     /**
@@ -959,21 +1021,36 @@ class Usermaven_WooCommerce {
     }
 
     /**
-     * Track order submission with full details
-     *
-     * @param int $order_id The WooCommerce order ID
-     * @param array $posted_data Posted checkout form data
-     * @param WC_Order $order The WooCommerce order object
+     * Early tracking for order submission to catch all checkout types
      */
-    public function track_order_submission($order_id, $posted_data, $order) {
-        if (!$order_id || !$order) {
+    public function track_order_submission($order_id) {
+        error_log('track_order_submission early triggered for order: ' . $order_id);
+
+        WC()->session->set('usermaven_initiate_checkout_tracked', null);
+
+        if (!$order_id) {
             return;
         }
 
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return;
+        }
+
+        // Check if this order has already been tracked
+        $tracked = get_post_meta($order_id, '_usermaven_order_tracked', true);
+        if ($tracked) {
+            return;
+        }
+
+        // Reset checkout tracking
+        $this->reset_checkout_tracking();
+
+        // Rest of your tracking code
         $location_details = $this->get_location_details($order);
         $items = $this->get_formatted_order_items($order);
 
-        // Get common attributes
+        // event attributes
         $event_attributes = array_merge(
             $this->get_common_order_attributes($order, $location_details),
             array(
@@ -996,6 +1073,9 @@ class Usermaven_WooCommerce {
         );
 
         $this->send_event('order_submitted', $event_attributes);
+
+        // Mark this order as tracked
+        update_post_meta($order_id, '_usermaven_order_tracked', true);
     }
     
 
@@ -1664,7 +1744,7 @@ class Usermaven_WooCommerce {
         if (!WC()->session->get('landing_page') && isset($_SERVER['REQUEST_URI'])) {
             WC()->session->set('landing_page', $_SERVER['REQUEST_URI']);
         }
-    
+
         // Do NOT update last_activity on every page load — only when user interacts with the cart or starts checkout.
         // This prevents continuous resets that block abandonment detection.
 
