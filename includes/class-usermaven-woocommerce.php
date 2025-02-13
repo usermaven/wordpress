@@ -1110,29 +1110,34 @@ class Usermaven_WooCommerce {
         }
 
         if (!$user) {
-            $user = array(
-                'anonymous_id' => $this->get_anonymous_id(),
-                'id' => $user_id ? (string)$user_id : $user_email, // Use email as ID for guests
-                'email' => $user_email,
-                'created_at' => '', // Empty for guest users
-                'first_name' => $order->get_billing_first_name(),
-                'last_name' => $order->get_billing_last_name(),
-                'custom' => array(
-                    'type' => $user ? 'registered' : 'guest',
-                    'role' => '',
-                    'username' => '',
-                    'display_name' => '',
-                    'billing_company' => $order->get_billing_company(),
-                    'billing_email' => $billing_email,
-                    'billing_phone' => $order->get_billing_phone(),
-                    'billing_postcode' => $order->get_billing_postcode(),
-                    'billing_city' => $order->get_billing_city(),
-                    'billing_state' => $order->get_billing_state(),
-                    'billing_country' => $order->get_billing_country(),
-                    'billing_address_1' => $order->get_billing_address_1(),
-                    'billing_address_2' => $order->get_billing_address_2(),
-                )
-            );
+            return;
+
+            // We are not tracking guest users right now. 
+
+            // TODO: Add guest user tracking (Need to Discuss with Amad bhai)
+            // $user = array(
+            //     'anonymous_id' => $this->get_anonymous_id(),
+            //     'id' => $user_id ? (string)$user_id : $user_email, // Use email as ID for guests
+            //     'email' => $user_email,
+            //     'created_at' => '', // Empty for guest users
+            //     'first_name' => $order->get_billing_first_name(),
+            //     'last_name' => $order->get_billing_last_name(),
+            //     'custom' => array(
+            //         'type' => $user ? 'registered' : 'guest',
+            //         'role' => '',
+            //         'username' => '',
+            //         'display_name' => '',
+            //         'billing_company' => $order->get_billing_company(),
+            //         'billing_email' => $billing_email,
+            //         'billing_phone' => $order->get_billing_phone(),
+            //         'billing_postcode' => $order->get_billing_postcode(),
+            //         'billing_city' => $order->get_billing_city(),
+            //         'billing_state' => $order->get_billing_state(),
+            //         'billing_country' => $order->get_billing_country(),
+            //         'billing_address_1' => $order->get_billing_address_1(),
+            //         'billing_address_2' => $order->get_billing_address_2(),
+            //     )
+            // );
         }
 
         $this->send_user_identify_request($user);
