@@ -80,7 +80,7 @@ class Usermaven {
 		if ( defined( 'USERMAVEN_VERSION' ) ) {
 			$this->version = USERMAVEN_VERSION;
 		} else {
-			$this->version = '1.1.4';
+			$this->version = '1.1.5';
 		}
 		$this->plugin_name = 'usermaven';
 		$this->tracking_host = $tracking_host;
