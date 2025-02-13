@@ -186,7 +186,14 @@ class Usermaven_WooCommerce {
      * Reset the initiate checkout tracking flag
      */
     public function reset_initiate_checkout_tracking() {
-        WC()->session->__unset('usermaven_initiate_checkout_tracked');
+       // Check if WC and session are available
+        if (function_exists('WC') && 
+            WC() && 
+            WC()->session && 
+            WC()->session->get('usermaven_initiate_checkout_tracked') !== null) {
+            
+            WC()->session->__unset('usermaven_initiate_checkout_tracked');
+        }
     }
 
     /**
