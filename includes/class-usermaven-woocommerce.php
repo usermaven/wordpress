@@ -1033,7 +1033,10 @@ class Usermaven_WooCommerce {
     public function track_order_submission($order_id) {
         error_log('track_order_submission early triggered for order: ' . $order_id);
 
-        WC()->session->set('usermaven_initiate_checkout_tracked', null);
+        // Check if WC and session are available before trying to use them
+        if (function_exists('WC') && WC() && WC()->session) {
+            WC()->session->set('usermaven_initiate_checkout_tracked', null);
+        }
 
         if (!$order_id) {
             return;
