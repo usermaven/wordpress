@@ -58,6 +58,15 @@ class Usermaven {
 	protected $version;
 
 	/**
+	 * The tracking host of the plugin.
+	 *
+	 * @since    1.0.4
+	 * @access   protected
+	 * @var      string    $tracking_host    The tracking host of the plugin.
+	 */
+	protected $tracking_host;
+
+	/**
 	 * Define the core functionality of the plugin.
 	 *
 	 * Set the plugin name and the plugin version that can be used throughout the plugin.
@@ -66,13 +75,15 @@ class Usermaven {
 	 *
 	 * @since    1.0.4
 	 */
-	public function __construct() {
+	
+	public function __construct($tracking_host) {
 		if ( defined( 'USERMAVEN_VERSION' ) ) {
 			$this->version = USERMAVEN_VERSION;
 		} else {
-			$this->version = '1.0.7';
+			$this->version = '1.1.1';
 		}
 		$this->plugin_name = 'usermaven';
+		$this->tracking_host = $tracking_host;
 
 		$this->load_dependencies();
 		$this->set_locale();
@@ -219,37 +230,37 @@ class Usermaven {
 	* Private function to check if the tracking is enabled for the current user role
 	* Note: If the user role is not found in the usermaven roles, then tracking is enabled by default
     */
-    private function is_tracking_enabled() {
-        $current_user = wp_get_current_user();
-        $is_logged_in = is_user_logged_in();
-
-        if (!$is_logged_in) {
-            return true;
-        }
-
-        $current_user_role = $current_user->roles[0] ?? '';
-
-        if (!$current_user_role) {
-            return true;
-        }
-
-        $usermaven_roles = [
-            'administrator',
-            'author',
-            'contributor',
-            'editor',
-            'subscriber',
-            'translator'
-        ];
-
-        if (in_array($current_user_role, $usermaven_roles)) {
-            $usermaven_tracking_enabled = get_option('usermaven_role_' . $current_user_role);
-            return $usermaven_tracking_enabled;
-        }
-
-        // For roles other than the specified Usermaven roles, return true
-        return true;
-    }
+	private function is_tracking_enabled() {
+		$current_user = wp_get_current_user();
+		$is_logged_in = is_user_logged_in();
+		
+		if (!$is_logged_in) {
+			return true;
+		}
+		
+		$current_user_role = $current_user->roles[0] ?? '';
+		
+		if (!$current_user_role) {
+			return true;
+		}
+		
+		$usermaven_roles = [
+			'administrator',
+			'author',
+			'contributor',
+			'editor',
+			'subscriber',
+			'translator'
+		];
+		
+		if (in_array($current_user_role, $usermaven_roles)) {
+			$usermaven_tracking_enabled = get_option('usermaven_role_' . $current_user_role);
+			return $usermaven_tracking_enabled;
+		}
+		
+		// For roles other than the specified Usermaven roles, return true
+		return true;
+	}
 
 
 
@@ -257,8 +268,8 @@ class Usermaven {
     * This function includes the JS tracking snippet in the wordpress website
     */
 	public function usermaven_events_tracking_print_js_snippet() {
+		$tracking_host = $this->tracking_host;
 	    $tracking_path = "https://t.usermaven.com/lib.js";
-	    $tracking_host = "https://events.usermaven.com";
 	    $api_key = get_option('usermaven_api_key');
 	    if (empty($api_key)) {
 	        return;

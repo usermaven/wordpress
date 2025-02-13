@@ -18,7 +18,7 @@
  * Plugin URI:        https://github.com/usermaven/wordpress
  * Description:       The Easiest Website and Product Analytics Platform
 
- * Version:           1.0.7
+ * Version:           1.1.1
  * Author:            Usermaven
  * Author URI:        https://usermaven.com/
  * License:           GPL-2.0+
@@ -37,7 +37,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.4 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'USERMAVEN_VERSION', '1.0.7' );
+define( 'USERMAVEN_VERSION', '1.1.1' );
 
 /**
  * The code that runs during plugin activation.
@@ -117,6 +117,13 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-usermaven.php';
 require_once('includes/usermaven-settings-form.php');
 
 /**
+ * The WooCommerce integration class for Usermaven
+ */
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-usermaven-api.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-usermaven-woocommerce.php';
+
+
+/**
  * Begins execution of the plugin.
  *
  * Since everything within the plugin is registered via hooks,
@@ -126,9 +133,17 @@ require_once('includes/usermaven-settings-form.php');
  * @since    1.0.4
  */
 function run_usermaven() {
+    // Tracking host
+    $tracking_host = "https://events.usermaven.com";
+    
+    // Initialize the plugin with the tracking host
+    $plugin = new Usermaven($tracking_host);
+    $plugin->run();
 
-	$plugin = new Usermaven();
-	$plugin->run();
-
+    // Check if WooCommerce is active and tracking is enabled
+    if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) 
+        && get_option('usermaven_track_woocommerce', false) ) {
+        new Usermaven_WooCommerce($tracking_host);
+    }
 }
 run_usermaven();
