@@ -515,6 +515,11 @@ class Usermaven_WooCommerce {
      * This ensures we don't have multiple competing triggers
      */
     public function maybe_track_checkout_init() {
+        // Check if WooCommerce and cart are available
+        if (!function_exists('WC') || !WC() || !WC()->cart || !WC()->session) {
+            return;
+        }
+
         // Early exit conditions
         if (WC()->cart->is_empty()) {
             return;
@@ -544,7 +549,7 @@ class Usermaven_WooCommerce {
             // Only track on actual checkout page, not cart page
             (function_exists('is_checkout') && is_checkout()) ||
             // For custom checkout pages
-            (has_shortcode(get_post()->post_content ?? '', 'woocommerce_checkout')) ||
+            (is_object(get_post()) && has_shortcode(get_post()->post_content ?? '', 'woocommerce_checkout')) ||
             // For AJAX checkout requests
             (isset($_REQUEST['wc-ajax']) && $_REQUEST['wc-ajax'] === 'checkout')
         );
