@@ -82,8 +82,10 @@ class Usermaven_WooCommerce {
         // Add session cleanup on successful order
         add_action('woocommerce_checkout_order_processed', function() {
             // Clear abandonment tracking when order is completed
-            WC()->session->set('checkout_started', false);
-            WC()->session->set('last_activity', null);
+            if (function_exists('WC') && WC() && WC()->session) {
+                WC()->session->set('checkout_started', false);
+                WC()->session->set('last_activity', null);
+            }
         });
     
         // Wishlist Integration (if using WooCommerce Wishlist)
@@ -684,8 +686,10 @@ class Usermaven_WooCommerce {
      * Reset tracking state when cart is updated
      */
     public function reset_checkout_tracking() {
-        WC()->session->set('usermaven_tracked_cart_hash', null);
-        WC()->session->set('usermaven_last_checkout_track_time', null);
+        if (function_exists('WC') && WC() && WC()->session) {
+            WC()->session->set('usermaven_tracked_cart_hash', null);
+            WC()->session->set('usermaven_last_checkout_track_time', null);
+        }
     }
 
     /**
@@ -1648,6 +1652,10 @@ class Usermaven_WooCommerce {
      * Track cart abandonment event
      */
     public function track_cart_abandonment() {
+        if (!function_exists('WC') || !WC() || !WC()->cart || !WC()->session) {
+            return;
+        }
+
         $cart = WC()->cart;
         if (!$cart || $cart->is_empty()) {
             return;
@@ -1765,7 +1773,9 @@ class Usermaven_WooCommerce {
 
         // Mark checkout start as activity
         add_action('woocommerce_before_checkout_form', function() {
-            WC()->session->set('checkout_started', true);
+            if (function_exists('WC') && WC() && WC()->session) {
+                WC()->session->set('checkout_started', true);
+            }
             $this->update_last_activity();
         });
 
