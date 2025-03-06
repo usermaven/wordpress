@@ -158,23 +158,44 @@ function usermaven_activation_form() {
             ?>>
         Track WooCommerce events
         <?php if (empty($server_token)): ?>
-            <span class="tooltip-text" style="color: #d63638; font-size: 12px; display: block; margin-top: 5px;">
-                Server token is required to enable WooCommerce tracking. Please add your server token above.
-            </span>
+            <div class="usermaven-notice">
+                <svg class="notice-icon" viewBox="0 0 24 24" width="20" height="20">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <span>Server token is required to enable WooCommerce tracking. Please add your server token above.</span>
+            </div>
         <?php endif; ?>
         </label>
         </div>
-        <div class="input-block">
+        <?php 
+        $woocommerce_active = class_exists('WooCommerce');
+        $track_woocommerce = get_option('usermaven_track_woocommerce');
+        $disable_sections = $woocommerce_active && $track_woocommerce;
+        $defalut_enabled_user_tracking_with_woocomerce = $woocommerce_active && $track_woocommerce ? true : get_option('usermaven_identify_verification');?>
+
+        <div class="input-block" id="identify-users-section" <?php echo $disable_sections ? 'style="opacity: 0.5;"' : ''; ?>>
         <h3>Tracking identified users</h3>
         <p class="input-text">
         By default, we don't send attributes of logged-in users to Usermaven. If you have a membership site and you want to track behavior of your signed-up users, please enable this option. You'll be able to view the user activity in 'Contacts hub > Users' page in Usermaven.
         </p>
         <label for="identify_verification">
-        <input type="checkbox" name="identify_verification" id="identify_verification" value="true" <?php checked( get_option('usermaven_identify_verification'), true ); ?>>
+        <input type="checkbox" name="identify_verification" id="identify_verification" value="true" 
+            <?php checked($defalut_enabled_user_tracking_with_woocomerce, true); ?>
+            <?php echo $disable_sections ? 'disabled' : ''; ?>>
         Identify logged-in users in Useramven
         </label>
         </div>
-        <div class="input-block">
+        
+        <?php if ($disable_sections): ?>
+        <div class="usermaven-notice">
+            <svg class="notice-icon" viewBox="0 0 24 24" width="20" height="20">
+                <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+            <span>User identification is automatically enabled with WooCommerce tracking. All users are identified by default, while tracking for Administrator, Author, Contributor, Editor, Subscriber, and Translator roles can be selectively enabled below.</span>
+        </div>
+        <?php endif; ?>
+
+        <div class="input-block" >
         <h3>Enable tracking for user roles</h3>
 
         <p class="input-text">
@@ -240,6 +261,37 @@ function usermaven_activation_form() {
       </div>
 
       <style>
+
+        .usermaven-notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background-color: #EFF6FF;
+            border: 1px solid #DBEAFE;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 8px 0 16px;
+            color: #1E40AF;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .usermaven-notice-error {
+            background-color: #FEF2F2;
+            border-color: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .notice-icon {
+            color: #3B82F6;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .usermaven-notice-error .notice-icon {
+            color: #DC2626;
+        }
+
         .notice-toast {
           position: fixed;
           top: 32px;
@@ -309,5 +361,28 @@ function usermaven_activation_form() {
           }
         }
       </style>
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const wooCommerceCheckbox = document.getElementById('track_woocommerce');
+            const identifyUsersSection = document.getElementById('identify-users-section');
+            const identifyVerificationCheckbox = document.getElementById('identify_verification');
+
+            function updateSections() {
+                if (wooCommerceCheckbox && !wooCommerceCheckbox.disabled && wooCommerceCheckbox.checked) {
+                    identifyUsersSection.style.opacity = '0.7';
+                    identifyVerificationCheckbox.disabled = true;
+                } else {
+                    identifyUsersSection.style.opacity = '1';
+                    identifyVerificationCheckbox.disabled = false;
+                }
+            }
+
+            if (wooCommerceCheckbox) {
+                wooCommerceCheckbox.addEventListener('change', updateSections);
+                // Initial state
+                updateSections();
+            }
+        });
+      </script>
     <?php
 }
