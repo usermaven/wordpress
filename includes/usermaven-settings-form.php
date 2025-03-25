@@ -230,7 +230,7 @@ function usermaven_activation_form() {
         </label>
 
         <p class="input-text" style="margin-bottom: 0px;">
-        You can read more about shared link and how to create it <a href="https://usermaven.com/docs/website-analytics-shareable-dashboard" target="blank">here</a>.
+        You can read more about shared link and how to create it <a href="https://usermaven.com/docs/website-analytics/shareable-dashboard" target="blank">here</a>.
         </p>
         </div>
         <div class="form-button">
