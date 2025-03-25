@@ -5,7 +5,7 @@ Tags: analytics, google analytics alternative, web analytics, stats, privacy, pr
 Requires at least: 3.0.1
 Tested up to: 6.7.1
 Requires PHP: 5.6
-Stable tag: 1.1.8
+Stable tag: 1.2.0
 License: Massachusetts Institute of Technology (MIT) license
 License URI: https://opensource.org/licenses/MIT
 
@@ -71,5 +71,51 @@ For more information, visit the [Usermaven website](https://usermaven.com/). And
 
 == Changelog ==
 
-= 1.0.0 =
-- Initial plugin release.
+= 1.2.0 - March 25, 2025 =
+- Added user identification feature for logged-in WordPress users (optional in admin panel)
+- Introduced option to exclude specific user roles (e.g., Administrator)
+- Fixed WordPress values unpack in old PHP versions
+
+= 1.2.0 - February 17, 2025 =
+- Improved WooCommerce cart init null check for early exit
+- Fixed issue with tracking pixel not loading correctly on some WordPress themes
+- Improved error handling for invalid API keys in settings page
+
+= 1.1.7 - February 13, 2025 =
+- Fixed WooCommerce initiate checkout event
+- Improved initiate checkout for custom checkout page and order status update
+- Added WooCommerce tracking class and events API custom events
+- Added WordPress dashboard widget to display Usermaven stats directly in admin area
+
+= 1.1.6 - October 18, 2024 =
+- Added customer role tracking
+- Enhanced tracking pixel with custom domain white-labeling for ad blocker bypassing
+- Updated readme.txt to reflect latest features and compatibility with WordPress
+- Fixed minor bug with user role exclusion not applying correctly
+
+= 1.1.5 - February 12, 2024 =
+- Optimized Performance and Consistency for WordPress UI
+- Improved performance of event tracking by optimizing JavaScript injection
+- Added support for tracking frontend events (clicks, form submissions) with toggle in settings
+
+= 1.1.4 - December 12, 2023 =
+- Added new WordPress plugin features
+- Updated compatibility to WordPress 6.4.2 in readme.txt
+- Minor bug fixes and stability improvements based on testing with latest WordPress version
+
+= 1.1.0 - March 16, 2023 =
+- Updated tracking snippet and version
+- Enhanced readme.txt with detailed features
+- Added support for automatic WooCommerce event tracking (product views, cart actions, purchases)
+- Introduced admin settings page for tracking options
+
+= 1.0.1 - February 27, 2023 =
+- Replaced WP URL validator with regex pattern
+- Minor fixes for WordPress plugin standards compatibility
+- Updated readme.txt with installation instructions and plugin description
+
+= 1.0.0 - January 31, 2023 =
+- Initial WordPress plugin release
+- Initial release with basic tracking pixel functionality and core files (usermaven.php, readme.txt)
+- Admin settings for API key configuration
+- Implemented requested changes (February 6, 2023)
