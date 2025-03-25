@@ -5,7 +5,7 @@ Tags: analytics, google analytics alternative, web analytics, stats, privacy, pr
 Requires at least: 3.0.1
 Tested up to: 6.7.1
 Requires PHP: 5.6
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: Massachusetts Institute of Technology (MIT) license
 License URI: https://opensource.org/licenses/MIT
 
@@ -71,12 +71,15 @@ For more information, visit the [Usermaven website](https://usermaven.com/). And
 
 == Changelog ==
 
+= 1.2.1 - March 25, 2025 =
+- Fixed shareable dashboard documentation link
+
 = 1.2.0 - March 25, 2025 =
 - Added user identification feature for logged-in WordPress users (optional in admin panel)
 - Introduced option to exclude specific user roles (e.g., Administrator)
 - Fixed WordPress values unpack in old PHP versions
 
-= 1.2.0 - February 17, 2025 =
+= 1.1.8 - February 17, 2025 =
 - Improved WooCommerce cart init null check for early exit
 - Fixed issue with tracking pixel not loading correctly on some WordPress themes
 - Improved error handling for invalid API keys in settings page
