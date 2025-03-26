@@ -5,7 +5,7 @@ Tags: analytics, google analytics alternative, web analytics, stats, privacy, pr
 Requires at least: 3.0.1
 Tested up to: 6.7.1
 Requires PHP: 5.6
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: Massachusetts Institute of Technology (MIT) license
 License URI: https://opensource.org/licenses/MIT
 
@@ -70,6 +70,10 @@ For more information, visit the [Usermaven website](https://usermaven.com/). And
 2. Usermaven WordPress Plugin Settings Page
 
 == Changelog ==
+
+= 1.2.2 - March 26, 2025 =
+- Fixed CSRF vulnerability in settings form
+- Added nonce verification to improve security in admin settings
 
 = 1.2.1 - March 25, 2025 =
 - Fixed shareable dashboard documentation link
