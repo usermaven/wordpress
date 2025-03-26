@@ -6,86 +6,93 @@
 function usermaven_activation_form() {
   // Check if the form has been submitted
   if ( isset( $_POST['submit'] ) ) {
-    // Get the form data
-    $autocapture = isset( $_POST['autocapture'] ) ? true : false;
-    $cookie_less_tracking = isset( $_POST['cookie_less_tracking'] ) ? true : false;
-    $identify_verification = isset( $_POST['identify_verification'] ) ? true : false;
-    $embed_dashboard = isset( $_POST['embed_dashboard'] ) ? true : false;
-    $track_woocommerce = isset( $_POST['track_woocommerce'] ) ? true : false;
+    // Verify the nonce for security
+    if ( ! isset( $_POST['usermaven_settings_nonce'] ) || ! wp_verify_nonce( $_POST['usermaven_settings_nonce'], 'usermaven_settings_action' ) ) {
+      // Nonce verification failed
+      $error = "Security verification failed. Please try again.";
+      $success_message = '<div class="notice-toast notice-error"><p>' . $error . '</p></div>';
+    } else {
+      // Get the form data
+      $autocapture = isset( $_POST['autocapture'] ) ? true : false;
+      $cookie_less_tracking = isset( $_POST['cookie_less_tracking'] ) ? true : false;
+      $identify_verification = isset( $_POST['identify_verification'] ) ? true : false;
+      $embed_dashboard = isset( $_POST['embed_dashboard'] ) ? true : false;
+      $track_woocommerce = isset( $_POST['track_woocommerce'] ) ? true : false;
 
-    $api_key = sanitize_text_field($_POST['api_key']);
-    $server_token = isset($_POST['server_token']) ? sanitize_text_field($_POST['server_token']) : '';
-    $custom_domain = '';
-    $shared_link = '';
+      $api_key = sanitize_text_field($_POST['api_key']);
+      $server_token = isset($_POST['server_token']) ? sanitize_text_field($_POST['server_token']) : '';
+      $custom_domain = '';
+      $shared_link = '';
 
-    if ( ! empty( $_POST['custom_domain'] ) ) {
-        $custom_domain = sanitize_url($_POST['custom_domain']);
-    }
-
-    if ( ! empty( $_POST['shared_link'] ) ) {
-        $shared_link = sanitize_url($_POST['shared_link']);
-    }
-
-
-    $error = '';
-    // Validate the API key
-    if ( empty( $api_key ) ) {
-      $error = "API key can't be empty";
-    }
-
-    // check if the url contains http or https, if not add https.
-    if (!empty($custom_domain)) {
-        $custom_domain = preg_replace("/^http:/i", "https:", $custom_domain);
-        if (!preg_match('/^https?:\/\//', $custom_domain)) {
-            $custom_domain = 'https://' . $custom_domain;
-        }
-    }
-
-
-    $pattern = '/^(https?:\/\/)?[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*\.[a-zA-Z]{2,63}(\/\S*)?$/i';
-
-    // Validate the custom domain
-    if ( ! empty( $custom_domain ) && ! preg_match( $pattern, $custom_domain ) ) {
-            $error = "Invalid custom domain";
-    }
-
-    // Validate the shared link
-    if ( ! empty( $shared_link ) && ! preg_match( $pattern, $shared_link ) ) {
-           $error = "Invalid shared link";
-    }
-
-    if (!$error) {
-      // Save the form data in the options table
-      update_option( 'usermaven_autocapture', $autocapture );
-      update_option( 'usermaven_cookie_less_tracking', $cookie_less_tracking );
-      update_option( 'usermaven_identify_verification', $identify_verification );
-      update_option( 'usermaven_embed_dashboard', $embed_dashboard );
-      update_option( 'usermaven_shared_link', $shared_link);
-      update_option( 'usermaven_api_key', $api_key );
-      update_option( 'usermaven_custom_domain', $custom_domain );
-
-      // Always update server token, even if empty
-      update_option( 'usermaven_server_token', $server_token );
-
-      // If server token is empty, disable WooCommerce tracking
-      if (empty($server_token)) {
-        update_option( 'usermaven_track_woocommerce', false );
-      } else {
-        update_option( 'usermaven_track_woocommerce', $track_woocommerce );
+      if ( ! empty( $_POST['custom_domain'] ) ) {
+          $custom_domain = sanitize_url($_POST['custom_domain']);
       }
 
-      // Roles to be tracked
-        update_option( 'usermaven_role_administrator', isset( $_POST['role_administrator'] ) ? true : false );
-        update_option( 'usermaven_role_author', isset( $_POST['role_author'] ) ? true : false );
-        update_option( 'usermaven_role_contributor', isset( $_POST['role_contributor'] ) ? true : false );
-        update_option( 'usermaven_role_editor', isset( $_POST['role_editor'] ) ? true : false );
-        update_option( 'usermaven_role_subscriber', isset( $_POST['role_subscriber'] ) ? true : false );
-        update_option( 'usermaven_role_translator', isset( $_POST['role_translator'] ) ? true : false );
+      if ( ! empty( $_POST['shared_link'] ) ) {
+          $shared_link = sanitize_url($_POST['shared_link']);
+      }
 
-     // Display a success message
-     $success_message = '<div class="notice-toast notice-success"><p>Settings saved successfully</p></div>';
-    } else {
-      $success_message = '<div class="notice-toast notice-error"><p>' . $error . '</p></div>';
+
+      $error = '';
+      // Validate the API key
+      if ( empty( $api_key ) ) {
+        $error = "API key can't be empty";
+      }
+
+      // check if the url contains http or https, if not add https.
+      if (!empty($custom_domain)) {
+          $custom_domain = preg_replace("/^http:/i", "https:", $custom_domain);
+          if (!preg_match('/^https?:\/\//', $custom_domain)) {
+              $custom_domain = 'https://' . $custom_domain;
+          }
+      }
+
+
+      $pattern = '/^(https?:\/\/)?[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*\.[a-zA-Z]{2,63}(\/\S*)?$/i';
+
+      // Validate the custom domain
+      if ( ! empty( $custom_domain ) && ! preg_match( $pattern, $custom_domain ) ) {
+              $error = "Invalid custom domain";
+      }
+
+      // Validate the shared link
+      if ( ! empty( $shared_link ) && ! preg_match( $pattern, $shared_link ) ) {
+             $error = "Invalid shared link";
+      }
+
+      if (!$error) {
+        // Save the form data in the options table
+        update_option( 'usermaven_autocapture', $autocapture );
+        update_option( 'usermaven_cookie_less_tracking', $cookie_less_tracking );
+        update_option( 'usermaven_identify_verification', $identify_verification );
+        update_option( 'usermaven_embed_dashboard', $embed_dashboard );
+        update_option( 'usermaven_shared_link', $shared_link);
+        update_option( 'usermaven_api_key', $api_key );
+        update_option( 'usermaven_custom_domain', $custom_domain );
+
+        // Always update server token, even if empty
+        update_option( 'usermaven_server_token', $server_token );
+
+        // If server token is empty, disable WooCommerce tracking
+        if (empty($server_token)) {
+          update_option( 'usermaven_track_woocommerce', false );
+        } else {
+          update_option( 'usermaven_track_woocommerce', $track_woocommerce );
+        }
+
+        // Roles to be tracked
+          update_option( 'usermaven_role_administrator', isset( $_POST['role_administrator'] ) ? true : false );
+          update_option( 'usermaven_role_author', isset( $_POST['role_author'] ) ? true : false );
+          update_option( 'usermaven_role_contributor', isset( $_POST['role_contributor'] ) ? true : false );
+          update_option( 'usermaven_role_editor', isset( $_POST['role_editor'] ) ? true : false );
+          update_option( 'usermaven_role_subscriber', isset( $_POST['role_subscriber'] ) ? true : false );
+          update_option( 'usermaven_role_translator', isset( $_POST['role_translator'] ) ? true : false );
+
+       // Display a success message
+       $success_message = '<div class="notice-toast notice-success"><p>Settings saved successfully</p></div>';
+      } else {
+        $success_message = '<div class="notice-toast notice-error"><p>' . $error . '</p></div>';
+      }
     }
   }
 
@@ -106,6 +113,7 @@ function usermaven_activation_form() {
       </div>
       <div class="form-input">
       <form class="form" method="post">
+        <?php wp_nonce_field('usermaven_settings_action', 'usermaven_settings_nonce'); ?>
         <h2 class="form-heading">Usermaven Tracking Setup</h2>
         <div class="input-block">
         <h3>Authentication</h3>
