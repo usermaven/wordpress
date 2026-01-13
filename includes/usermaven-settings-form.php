@@ -14,6 +14,7 @@ function usermaven_activation_form() {
     } else {
       // Get the form data
       $autocapture = isset( $_POST['autocapture'] ) ? true : false;
+      $form_tracking = isset( $_POST['form_tracking'] ) ? true : false;
       $cookie_less_tracking = isset( $_POST['cookie_less_tracking'] ) ? true : false;
       $identify_verification = isset( $_POST['identify_verification'] ) ? true : false;
       $embed_dashboard = isset( $_POST['embed_dashboard'] ) ? true : false;
@@ -63,6 +64,7 @@ function usermaven_activation_form() {
       if (!$error) {
         // Save the form data in the options table
         update_option( 'usermaven_autocapture', $autocapture );
+        update_option( 'usermaven_form_tracking', $form_tracking );
         update_option( 'usermaven_cookie_less_tracking', $cookie_less_tracking );
         update_option( 'usermaven_identify_verification', $identify_verification );
         update_option( 'usermaven_embed_dashboard', $embed_dashboard );
@@ -156,6 +158,10 @@ function usermaven_activation_form() {
         <label for="autocapture">
         <input type="checkbox" name="autocapture" id="autocapture" value="true" <?php checked( get_option('usermaven_autocapture'), true ); ?>>
         Automatically capture frontend events i.e button clicks, form submission etc.</label>
+        <br>
+        <label for="form_tracking">
+        <input type="checkbox" name="form_tracking" id="form_tracking" value="true" <?php checked( get_option('usermaven_form_tracking'), true ); ?>>
+        Track form submissions</label>
         <br>
         <label for="track_woocommerce">
         <input type="checkbox" name="track_woocommerce" id="track_woocommerce" value="true" 

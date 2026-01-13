@@ -276,6 +276,7 @@ class Usermaven {
 	    }
 	    $custom_domain = get_option('usermaven_custom_domain');
 	    $data_autocapture = get_option('usermaven_autocapture');
+	    $form_tracking = get_option('usermaven_form_tracking');
 	    $cookie_less_tracking = get_option('usermaven_cookie_less_tracking');
 	    $identify_verification = get_option('usermaven_identify_verification');
 	    $is_tracking_enabled = $this->is_tracking_enabled();
@@ -305,6 +306,7 @@ class Usermaven {
                 t.setAttribute('data-tracking-host', '<?php echo esc_attr($tracking_host); ?>');
                 t.setAttribute('data-key', '<?php echo esc_attr($api_key); ?>');
                 <?php if($data_autocapture): ?>t.setAttribute('data-autocapture', 'true');<?php endif; ?>
+                <?php if($form_tracking): ?>t.setAttribute('data-form-tracking', 'true');<?php endif; ?>
                 <?php if($cookie_less_tracking): ?>t.setAttribute('data-privacy-policy', 'strict');<?php endif; ?>
                 t.setAttribute('data-randomize-url', 'true');
                 t.src = '<?php echo esc_attr($tracking_path); ?>';
