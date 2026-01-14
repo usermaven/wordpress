@@ -3,9 +3,9 @@ Contributors: usermaven
 Donate link: https://usermaven.com/
 Tags: analytics, google analytics alternative, web analytics, stats, privacy, privacy friendly, privacy friendly analytics,
 Requires at least: 3.0.1
-Tested up to: 6.7.1
+Tested up to: 6.8.3
 Requires PHP: 5.6
-Stable tag: 1.2.2
+Stable tag: 1.2.7
 License: Massachusetts Institute of Technology (MIT) license
 License URI: https://opensource.org/licenses/MIT
 
@@ -41,7 +41,6 @@ That's why we built Usermaven, the new data scientist in your team. We are makin
 * Super Simple – Designed to be simple and intuitive in every way, without complexity or clutter to distract you. WooCommerce events are tracked automatically with zero configuration needed.
 * Privacy Compliance – We've designed Usermaven to comply with GDPR and CCPA regulations from day one.
 * System Security – We apply the latest security standards and take measures to ensure your data is safe with us.
-
 == Installation ==
 
 = Automatic installation =
@@ -70,6 +69,17 @@ For more information, visit the [Usermaven website](https://usermaven.com/). And
 2. Usermaven WordPress Plugin Settings Page
 
 == Changelog ==
+
+= 1.2.7 - January 14, 2026 =
+* Added separate form tracking toggle for better control over form submission tracking
+* Enhanced tracking options with dedicated form tracking configuration
+* Improved settings page with clearer tracking options
+
+= 1.2.6 - December 19, 2025 =
+* Events now include IP address and browser information.
+* Cookieless tracking mode now enables full privacy protection.
+* IP address is anonymized for privacy before any processing.
+* This update maintains compatibility with previous versions of the plugin.
 
 = 1.2.2 - March 26, 2025 =
 - Fixed CSRF vulnerability in settings form
