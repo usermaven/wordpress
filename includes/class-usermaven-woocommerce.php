@@ -125,6 +125,7 @@ class Usermaven_WooCommerce {
         // Get custom user data
         $roles = $user->roles;
         $primary_role = !empty($roles) ? $roles[0] : '';
+        $role_list = array_map('strval', $roles);
 
         // Get the anonymous_id from cookie if available
         $eventn_cookie_name = '__eventn_id_' . $this->api_key;
@@ -151,10 +152,12 @@ class Usermaven_WooCommerce {
             'id' => (string) $user_id,
             'email' => (string) $user_email,
             'created_at' => date('Y-m-d\TH:i:s', strtotime($user->user_registered)),
+            'name' => trim($user->first_name . ' ' . $user->last_name),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'custom' => array(
                 'role' => $primary_role,
+                'roles' => $role_list,
                 'username' => $user->user_login,
                 'display_name' => $user->display_name,
                 'billing_country' => $customer->get_billing_country(),
@@ -767,7 +770,7 @@ class Usermaven_WooCommerce {
                 'timestamp' => (string) current_time('mysql')
         );
 
-        $this->send_event('order_status_changed', $event_attributes);
+        $this->send_event_with_context('order_status_changed', $event_attributes, $order);
     }
 
     /**
@@ -827,6 +830,48 @@ class Usermaven_WooCommerce {
             'shipping_state_code' => $shipping_state_code,
             'shipping_state_name' => $shipping_state_name
         );
+    }
+
+    /**
+     * Build a normalized user context from the order for consistent user tracking.
+     *
+     * @param WC_Order $order
+     * @return array
+     */
+    private function get_order_user_context($order) {
+        $context = array(
+            'id' => null,
+            'email' => '',
+            'name' => '',
+            'roles' => array(),
+            'primary_role' => ''
+        );
+
+        if (!($order instanceof WC_Order)) {
+            return $context;
+        }
+
+        $customer_id = $order->get_customer_id();
+        $email = $order->get_billing_email();
+        $user = $customer_id ? get_user_by('id', $customer_id) : get_user_by('email', $email);
+        $roles = $user ? array_map('strval', $user->roles) : array();
+
+        // Use a sensible guest fallback when no roles are available.
+        if (empty($roles) && !$customer_id) {
+            $roles = array('guest');
+        }
+
+        $context['id'] = $customer_id ? (int) $customer_id : null;
+        $context['email'] = (string) $email;
+        $context['roles'] = $roles;
+        $context['primary_role'] = !empty($roles) ? $roles[0] : '';
+
+        $first_name = $order->get_billing_first_name();
+        $last_name = $order->get_billing_last_name();
+        $full_name = trim($first_name . ' ' . $last_name);
+        $context['name'] = $full_name ? $full_name : ($user ? $user->display_name : '');
+
+        return $context;
     }
 
     /**
@@ -945,6 +990,8 @@ class Usermaven_WooCommerce {
      * @return array Common order attributes
      */
     private function get_common_order_attributes($order, $location_details) {
+        $user_context = $this->get_order_user_context($order);
+
         return array(
             // Order Information
             'order_id' => (int) $order->get_id(),
@@ -979,6 +1026,10 @@ class Usermaven_WooCommerce {
             'customer_note' => (string) $order->get_customer_note(),
             'customer_type' => (string) ($order->get_customer_id() ? 'registered' : 'guest'),
             'is_registered_customer' => (bool) $order->get_customer_id(),
+            'customer_roles' => $user_context['roles'],
+            'customer_primary_role' => (string) $user_context['primary_role'],
+            'customer_name' => (string) $user_context['name'],
+            'customer_email' => (string) $user_context['email'],
             
             // Billing Details
             'billing_email' => (string) $order->get_billing_email(),
@@ -1066,7 +1117,7 @@ class Usermaven_WooCommerce {
             )
         );
 
-        $this->send_event('order_submitted', $event_attributes);
+        $this->send_event_with_context('order_submitted', $event_attributes, $order);
 
         // Mark this order as tracked
         update_post_meta($order_id, '_usermaven_order_tracked', true);
@@ -1126,7 +1177,7 @@ class Usermaven_WooCommerce {
             )
         );
 
-        $this->send_event('order_completed', $event_attributes);
+        $this->send_event_with_context('order_completed', $event_attributes, $order);
     }
 
     /**
@@ -1213,7 +1264,7 @@ class Usermaven_WooCommerce {
             )
         );
 
-        $this->send_event('order_failed', $event_attributes);
+        $this->send_event_with_context('order_failed', $event_attributes, $order);
     }
 
 
@@ -1253,7 +1304,7 @@ class Usermaven_WooCommerce {
             )
         );
 
-        $this->send_event('order_in_processing', $event_attributes);
+        $this->send_event_with_context('order_in_processing', $event_attributes, $order);
     }
 
 
@@ -1294,7 +1345,7 @@ class Usermaven_WooCommerce {
             )
         );
 
-        $this->send_event('order_pending', $event_attributes);
+        $this->send_event_with_context('order_pending', $event_attributes, $order);
     }
 
     /**
@@ -1335,7 +1386,7 @@ class Usermaven_WooCommerce {
             )
         );
 
-        $this->send_event('order_on_hold', $event_attributes);
+        $this->send_event_with_context('order_on_hold', $event_attributes, $order);
     }
 
 
@@ -1380,7 +1431,7 @@ class Usermaven_WooCommerce {
             )
         );
 
-        $this->send_event('order_draft', $event_attributes);
+        $this->send_event_with_context('order_draft', $event_attributes, $order);
     }
 
 
@@ -1424,7 +1475,7 @@ class Usermaven_WooCommerce {
             )
         );
 
-        $this->send_event('order_cancelled', $event_attributes);
+        $this->send_event_with_context('order_cancelled', $event_attributes, $order);
     }
 
     /**
@@ -1451,7 +1502,7 @@ class Usermaven_WooCommerce {
             'timestamp' => (string) current_time('mysql')
         );
 
-        $this->send_event('order_thankyou_page_viewed', $event_attributes);    
+        $this->send_event_with_context('order_thankyou_page_viewed', $event_attributes, $order);    
     }
 
     /**
@@ -1570,7 +1621,7 @@ class Usermaven_WooCommerce {
             )
         );
 
-        $this->send_event('order_refunded', $event_attributes);
+        $this->send_event_with_context('order_refunded', $event_attributes, $order);
     }
 
     /**
@@ -1935,6 +1986,24 @@ class Usermaven_WooCommerce {
         $this->send_event('moved_wishlist_item', $event_attributes);
     }
 
+    /**
+     * Send events with optional order context to ensure user identity travels with purchase events.
+     *
+     * @param string $event_type
+     * @param array $event_attributes
+     * @param WC_Order|null $order
+     */
+    private function send_event_with_context($event_type, $event_attributes = array(), $order = null) {
+        if ($order instanceof WC_Order) {
+            $user_data = $this->get_user_data($order);
+            $company_data = $this->get_company_data_from_order($order);
+            $this->api->send_event($event_type, $user_data, $event_attributes, $company_data);
+            return;
+        }
+
+        $this->send_event($event_type, $event_attributes);
+    }
+
     private function send_event($event_type, $event_attributes = array()) {
         if (empty($event_type)) {
             throw new Exception('Event type is required');
@@ -1945,7 +2014,7 @@ class Usermaven_WooCommerce {
         $this->api->send_event($event_type, $user_data, $event_attributes, $company_data);
     }
 
-    private function get_user_data() {
+    private function get_user_data($order = null) {
         $user = wp_get_current_user();
 
         // Construct the cookie names
@@ -1966,17 +2035,33 @@ class Usermaven_WooCommerce {
             'id' => '',
         );
 
+        // If order context is provided, prefer the order's customer info.
+        if ($order instanceof WC_Order) {
+            $context = $this->get_order_user_context($order);
+            $user_data['id'] = $context['id'] !== null ? (string) $context['id'] : ($context['email'] ?: '');
+            $user_data['email'] = $context['email'];
+            $user_data['name'] = $context['name'];
+            $user_data['first_name'] = $order->get_billing_first_name();
+            $user_data['last_name'] = $order->get_billing_last_name();
+            $user_data['custom'] = array(
+                'role' => $context['primary_role'],
+                'roles' => $context['roles'],
+            );
+            return $user_data;
+        }
+
         // Check if the user is logged in
-        // Else return the anonymous_id and id only
         if ($user->ID !== 0) {
-            // User is logged in
+            $roles = array_map('strval', $user->roles);
             $user_data['id'] = (string)$user->ID;
             $user_data['email'] = $user->user_email;
             $user_data['created_at'] = $user->user_registered;
+            $user_data['name'] = $user->display_name;
             $user_data['first_name'] = $user->user_firstname;
             $user_data['last_name'] = $user->user_lastname;
             $user_data['custom'] = array(
-                'role' => $user->roles[0] ?? '',
+                'role' => $roles[0] ?? '',
+                'roles' => $roles,
             );
         }
     
@@ -1987,6 +2072,34 @@ class Usermaven_WooCommerce {
         // You can customize this method to include relevant company data
         // For now, we'll return an empty array
         return array();
+    }
+
+    /**
+     * Build company data from order details when available.
+     *
+     * @param WC_Order $order
+     * @return array
+     */
+    private function get_company_data_from_order($order) {
+        if (!($order instanceof WC_Order)) {
+            return $this->get_company_data();
+        }
+
+        $company_name = $order->get_billing_company();
+        if (empty($company_name)) {
+            return $this->get_company_data();
+        }
+
+        return array(
+            'id' => 'wc_' . md5($company_name . $order->get_billing_email()),
+            'name' => $company_name,
+            'created_at' => $order->get_date_created() ? $order->get_date_created()->format('Y-m-d\TH:i:s') : '',
+            'custom' => array(
+                'billing_country' => $order->get_billing_country(),
+                'billing_city' => $order->get_billing_city(),
+                'billing_postcode' => $order->get_billing_postcode()
+            )
+        );
     }
 
 }
