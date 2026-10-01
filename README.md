@@ -32,7 +32,7 @@ That's why we built Usermaven, the new data scientist in your team. We are makin
 Automatic installation is the easiest option as WordPress handles the file transfers itself and you don't need to leave your web browser. To do an automatic install of Usermaven, log in to your WordPress dashboard, navigate to the Plugins menu and click "Add New". In the search field type "Usermaven" and click Search Plugins. Once you have found the plugin you can view details about it such as the point release, rating and description. Most importantly of course, you can install it by simply clicking "Install Now".
 
 ## Tracking identified users
-If a `$current_user` is present, and `Identify logged-in users in Useramven` option is enabled, then we will automatically identify your logged-in users.
+If a `$current_user` is present, and `Identify logged-in users in Usermaven` option is enabled, then we will automatically identify your logged-in users.
 
 ## Development Workflow
 To start contributing to the development of Usermaven, follow these steps:

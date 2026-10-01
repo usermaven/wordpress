@@ -185,7 +185,7 @@ function usermaven_activation_form() {
         </p>
         <label for="identify_verification">
         <input type="checkbox" name="identify_verification" id="identify_verification" value="true" <?php checked( get_option('usermaven_identify_verification'), true ); ?>>
-        Identify logged-in users in Useramven
+        Identify logged-in users in Usermaven
         </label>
         </div>
         <div class="input-block">
