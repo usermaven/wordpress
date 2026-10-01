@@ -3,9 +3,9 @@ Contributors: usermaven
 Donate link: https://usermaven.com/
 Tags: analytics, google analytics alternative, web analytics, stats, privacy, privacy friendly, privacy friendly analytics,
 Requires at least: 3.0.1
-Tested up to: 6.8.3
+Tested up to: 7.1
 Requires PHP: 5.6
-Stable tag: 1.2.7
+Stable tag: 1.2.8
 License: Massachusetts Institute of Technology (MIT) license
 License URI: https://opensource.org/licenses/MIT
 
@@ -69,6 +69,9 @@ For more information, visit the [Usermaven website](https://usermaven.com/). And
 2. Usermaven WordPress Plugin Settings Page
 
 == Changelog ==
+
+= 1.2.8 - October 1, 2026 =
+* Verified compatibility with WordPress 7.1
 
 = 1.2.7 - January 14, 2026 =
 * Added separate form tracking toggle for better control over form submission tracking
